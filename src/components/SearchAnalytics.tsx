@@ -23,9 +23,10 @@ interface SearchAnalyticsProps {
   query: string;
   results: SearchResult[];
   onClearSearch: () => void;
+  onKeywordClick?: (keyword: string) => void;
 }
 
-const SearchAnalytics = ({ query, results, onClearSearch }: SearchAnalyticsProps) => {
+const SearchAnalytics = ({ query, results, onClearSearch, onKeywordClick }: SearchAnalyticsProps) => {
   const postResults = results.filter(r => r.type === "post");
   
   // Function to properly format Reddit URLs
@@ -137,6 +138,12 @@ const SearchAnalytics = ({ query, results, onClearSearch }: SearchAnalyticsProps
   };
 
   const keywords = extractKeywords();
+
+  const handleKeywordClick = (keyword: string) => {
+    if (onKeywordClick) {
+      onKeywordClick(keyword);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -281,13 +288,21 @@ const SearchAnalytics = ({ query, results, onClearSearch }: SearchAnalyticsProps
               <Hash className="w-5 h-5 text-orange-500" />
               Related Keywords
             </CardTitle>
+            <p className="text-sm text-gray-600">Click any keyword to search for it</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {keywords.slice(0, 10).map((keyword, index) => (
-                <div key={keyword.word} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <span className="font-medium text-sm">{keyword.word}</span>
-                  <Badge variant="outline" className="text-xs">
+                <div 
+                  key={keyword.word} 
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-orange-50 transition-colors cursor-pointer group"
+                  onClick={() => handleKeywordClick(keyword.word)}
+                  title={`Click to search for "${keyword.word}"`}
+                >
+                  <span className="font-medium text-sm group-hover:text-orange-600 transition-colors">
+                    {keyword.word}
+                  </span>
+                  <Badge variant="outline" className="text-xs group-hover:border-orange-300">
                     {keyword.count} mentions
                   </Badge>
                 </div>

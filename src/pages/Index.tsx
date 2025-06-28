@@ -46,11 +46,13 @@ const Index = () => {
     subreddits: [] 
   };
 
-  const handleSearch = async () => {
-    if (searchTerm.trim()) {
+  const handleSearch = async (query?: string) => {
+    const searchQuery = query || searchTerm;
+    if (searchQuery.trim()) {
       setIsSearching(true);
+      setSearchTerm(searchQuery); // Update search term if searching via keyword
       try {
-        const results = await searchReddit(searchTerm);
+        const results = await searchReddit(searchQuery);
         setSearchResults(results);
       } catch (err) {
         console.error('Search failed:', err);
@@ -63,6 +65,10 @@ const Index = () => {
     setSearchTerm("");
     setSearchResults([]);
     setIsSearching(false);
+  };
+
+  const handleKeywordClick = (keyword: string) => {
+    handleSearch(keyword);
   };
 
   // Calculate metrics from trending topics
@@ -110,7 +116,7 @@ const Index = () => {
                 disabled={loading}
               />
               <Button 
-                onClick={handleSearch} 
+                onClick={() => handleSearch()} 
                 className="bg-orange-500 hover:bg-orange-600 px-6"
                 disabled={loading || !searchTerm.trim()}
               >
@@ -126,6 +132,7 @@ const Index = () => {
             query={searchTerm}
             results={searchResults}
             onClearSearch={handleClearSearch}
+            onKeywordClick={handleKeywordClick}
           />
         )}
 
