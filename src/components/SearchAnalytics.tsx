@@ -28,6 +28,29 @@ interface SearchAnalyticsProps {
 const SearchAnalytics = ({ query, results, onClearSearch }: SearchAnalyticsProps) => {
   const postResults = results.filter(r => r.type === "post");
   
+  // Function to properly format Reddit URLs
+  const getRedditUrl = (url: string) => {
+    if (!url || url === '#') return '#';
+    
+    // If it's already a full URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // If it starts with /r/, prepend reddit.com
+    if (url.startsWith('/r/')) {
+      return `https://www.reddit.com${url}`;
+    }
+    
+    // If it's a relative path, prepend reddit.com
+    if (url.startsWith('/')) {
+      return `https://www.reddit.com${url}`;
+    }
+    
+    // Otherwise, assume it needs the full reddit.com prefix
+    return `https://www.reddit.com/${url}`;
+  };
+
   // Generate analytics from search results
   const generateAnalytics = () => {
     const subredditCounts: Record<string, number> = {};
@@ -292,7 +315,13 @@ const SearchAnalytics = ({ query, results, onClearSearch }: SearchAnalyticsProps
                     variant="ghost" 
                     size="sm" 
                     className="h-auto p-1"
-                    onClick={() => window.open(`https://reddit.com${post.url}`, '_blank')}
+                    onClick={() => {
+                      const url = getRedditUrl(post.url || '');
+                      if (url !== '#') {
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    disabled={!post.url || post.url === '#'}
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Button>

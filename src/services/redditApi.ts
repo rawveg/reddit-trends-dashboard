@@ -7,6 +7,7 @@ interface RedditPost {
   comments: number;
   created_utc: number;
   url: string;
+  permalink: string;
   selftext: string;
   score: number;
   num_comments: number;
@@ -64,7 +65,9 @@ class RedditApiService {
         ...child.data,
         upvotes: child.data.score || child.data.upvotes || 0,
         comments: child.data.num_comments || child.data.comments || 0,
-        subreddit: child.data.subreddit || subreddit
+        subreddit: child.data.subreddit || subreddit,
+        // Use permalink for proper Reddit URLs
+        url: child.data.permalink ? `https://www.reddit.com${child.data.permalink}` : child.data.url || '#'
       }));
     } catch (error) {
       console.error(`Error fetching r/${subreddit}:`, error);
@@ -118,7 +121,9 @@ class RedditApiService {
         ...child.data,
         upvotes: child.data.score || child.data.upvotes || 0,
         comments: child.data.num_comments || child.data.comments || 0,
-        subreddit: child.data.subreddit || 'unknown'
+        subreddit: child.data.subreddit || 'unknown',
+        // Use permalink for proper Reddit URLs
+        url: child.data.permalink ? `https://www.reddit.com${child.data.permalink}` : child.data.url || '#'
       }));
     } catch (error) {
       console.error('Reddit search failed:', error);
