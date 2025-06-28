@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,11 +46,24 @@ const Index = () => {
     subreddits: [] 
   };
 
-  const handleSearch = async (query?: string) => {
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
+  const handleSearch = async (query?: string, fromKeywordClick = false) => {
     const searchQuery = query || searchTerm;
     if (searchQuery.trim()) {
       setIsSearching(true);
       setSearchTerm(searchQuery); // Update search term if searching via keyword
+      
+      // Scroll to top when searching via keyword click
+      if (fromKeywordClick) {
+        scrollToTop();
+      }
+      
       try {
         const results = await searchReddit(searchQuery);
         setSearchResults(results);
@@ -65,11 +78,22 @@ const Index = () => {
     setSearchTerm("");
     setSearchResults([]);
     setIsSearching(false);
+    scrollToTop(); // Also scroll to top when clearing search
   };
 
   const handleKeywordClick = (keyword: string) => {
-    handleSearch(keyword);
+    handleSearch(keyword, true); // Pass true to indicate this is from a keyword click
   };
+
+  // Scroll to top when search results change (as a backup)
+  useEffect(() => {
+    if (isSearching && searchResults.length > 0) {
+      // Small delay to ensure the UI has updated
+      setTimeout(() => {
+        scrollToTop();
+      }, 100);
+    }
+  }, [isSearching, searchResults]);
 
   // Calculate metrics from trending topics
   const totalMentions = trendingTopics.reduce((sum, topic) => sum + topic.mentions, 0);
