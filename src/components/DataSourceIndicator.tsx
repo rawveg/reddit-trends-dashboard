@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertCircle, CheckCircle, Clock, Wifi, WifiOff, ExternalLink, Timer } from "lucide-react";
+import { RefreshCw, AlertCircle, CheckCircle, Clock, Wifi, WifiOff, Activity, Timer } from "lucide-react";
+import { useState } from "react";
 
 interface DataSourceIndicatorProps {
   lastUpdated: Date;
@@ -12,6 +13,9 @@ interface DataSourceIndicatorProps {
 }
 
 const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCount = 0 }: DataSourceIndicatorProps) => {
+  const [testingProxy, setTestingProxy] = useState(false);
+  const [proxyStatus, setProxyStatus] = useState<'unknown' | 'working' | 'failed'>('unknown');
+
   const getTimeSinceUpdate = () => {
     const now = new Date();
     const diff = now.getTime() - lastUpdated.getTime();
@@ -22,6 +26,30 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours}h ago`;
     return `${Math.floor(hours / 24)}d ago`;
+  };
+
+  const testCorsProxy = async () => {
+    setTestingProxy(true);
+    try {
+      // Test the CORS proxy with a simple Reddit API call
+      const testUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.reddit.com/r/test.json?limit=1');
+      const response = await fetch(testUrl);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.data && data.data.children) {
+          setProxyStatus('working');
+        } else {
+          setProxyStatus('failed');
+        }
+      } else {
+        setProxyStatus('failed');
+      }
+    } catch (err) {
+      setProxyStatus('failed');
+    } finally {
+      setTestingProxy(false);
+    }
   };
 
   const isRateLimited = error?.includes('Rate limited') || error?.includes('429');
@@ -54,6 +82,16 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
     return 'border-l-yellow-500';
   };
 
+  const getProxyStatusBadge = () => {
+    if (proxyStatus === 'working') {
+      return <Badge variant="default" className="text-xs bg-green-100 text-green-800">Proxy OK</Badge>;
+    }
+    if (proxyStatus === 'failed') {
+      return <Badge variant="destructive" className="text-xs">Proxy Failed</Badge>;
+    }
+    return null;
+  };
+
   return (
     <Card className={`border-l-4 ${getBorderColor()}`}>
       <CardContent className="p-4">
@@ -72,6 +110,7 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
                     {dataCount} items
                   </Badge>
                 )}
+                {getProxyStatusBadge()}
               </div>
               
               <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
@@ -95,12 +134,18 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open('https://api.allorigins.win/', '_blank')}
+                        onClick={testCorsProxy}
+                        disabled={testingProxy}
                         className="text-xs h-6"
                       >
-                        <ExternalLink className="w-3 h-3 mr-1" />
-                        Check CORS Proxy
+                        <Activity className={`w-3 h-3 mr-1 ${testingProxy ? 'animate-pulse' : ''}`} />
+                        {testingProxy ? 'Testing...' : 'Test Connection'}
                       </Button>
+                      {proxyStatus === 'failed' && (
+                        <span className="text-xs text-red-600">
+                          CORS proxy unavailable
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
