@@ -79,8 +79,8 @@ const Index = () => {
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-5xl font-bold text-gray-900 flex items-center justify-center gap-3">
-            <MessageCircle className="text-orange-500" />
-            Reddit Analytics Dashboard
+            <TrendingUp className="text-orange-500" />
+            Reddit Trends Dashboard
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Comprehensive Reddit trend analysis with real-time sentiment tracking, 
