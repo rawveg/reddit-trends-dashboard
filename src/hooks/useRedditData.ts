@@ -92,14 +92,17 @@ export const useRedditData = () => {
       
       const searchResults = await redditApi.searchReddit(query);
       
-      // Format search results
+      // Format search results with more detailed information
       const formattedResults = searchResults.map(post => ({
         type: 'post' as const,
         title: post.title || 'Untitled',
         subreddit: `r/${post.subreddit}`,
+        author: post.author || 'unknown',
         upvotes: post.upvotes || 0,
         comments: post.comments || 0,
-        timeAgo: redditApi.getTimeAgo(post.created_utc || Date.now() / 1000)
+        timeAgo: redditApi.getTimeAgo(post.created_utc || Date.now() / 1000),
+        url: post.url || '#',
+        created_utc: post.created_utc
       }));
       
       return formattedResults;

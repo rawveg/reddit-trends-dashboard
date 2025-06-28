@@ -16,7 +16,7 @@ import SubredditAnalytics from "@/components/SubredditAnalytics";
 import TrendComparison from "@/components/TrendComparison";
 import TrendMap from "@/components/TrendMap";
 import AlertsNotifications from "@/components/AlertsNotifications";
-import SearchResults from "@/components/SearchResults";
+import SearchAnalytics from "@/components/SearchAnalytics";
 import LiveFeed from "@/components/LiveFeed";
 import EngagementMetrics from "@/components/EngagementMetrics";
 import VelocityChart from "@/components/VelocityChart";
@@ -120,9 +120,9 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        {/* Search Results */}
+        {/* Search Analytics - Show comprehensive analysis when searching */}
         {isSearching && (
-          <SearchResults 
+          <SearchAnalytics 
             query={searchTerm}
             results={searchResults}
             onClearSearch={handleClearSearch}
