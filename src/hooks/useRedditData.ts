@@ -25,16 +25,26 @@ export const useRedditData = () => {
   const [recentPosts, setRecentPosts] = useState<RedditPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [lastFetchTime, setLastFetchTime] = useState<Date>(new Date());
 
-  const fetchRedditData = async (isRetry = false) => {
+  const fetchRedditData = async (isManualRefresh = false) => {
     try {
       setLoading(true);
-      if (!isRetry) {
+      
+      // Check if we're rate limited
+      if (redditApi.isRateLimited()) {
+        const waitTime = redditApi.getRateLimitWaitTime();
+        const waitMinutes = Math.ceil(waitTime / 60000);
+        setError(`Rate limited. Please wait ${waitMinutes} minute(s) before trying again.`);
+        setLoading(false);
+        return;
+      }
+      
+      if (!isManualRefresh) {
         setError(null);
       }
       
-      console.log('Fetching Reddit data with CORS proxy...');
+      console.log('Fetching Reddit data with rate limiting...');
       
       // Fetch trending posts from multiple subreddits
       const posts = await redditApi.fetchTrendingFromMultipleSubreddits();
@@ -47,7 +57,7 @@ export const useRedditData = () => {
       const topics = redditApi.extractTrendingTopics(posts);
       
       // Format posts for display
-      const formattedPosts = posts.slice(0, 20).map(post => ({
+      const formattedPosts = posts.slice(0, 15).map(post => ({ // Reduced from 20 to 15
         id: post.id || Math.random().toString(),
         title: post.title || 'Untitled post',
         subreddit: post.subreddit || 'unknown',
@@ -61,7 +71,7 @@ export const useRedditData = () => {
       setTrendingTopics(topics);
       setRecentPosts(formattedPosts);
       setError(null);
-      setRetryCount(0);
+      setLastFetchTime(new Date());
       
       console.log('Successfully fetched Reddit data:', {
         topics: topics.length,
@@ -72,14 +82,13 @@ export const useRedditData = () => {
       console.error('Failed to fetch Reddit data:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       
-      if (retryCount < 2) {
-        console.log(`Retrying... (attempt ${retryCount + 1}/2)`);
-        setRetryCount(prev => prev + 1);
-        setTimeout(() => fetchRedditData(true), 2000);
-        return;
+      if (errorMessage.includes('429') || errorMessage.includes('Rate limited')) {
+        const waitTime = redditApi.getRateLimitWaitTime();
+        const waitMinutes = Math.ceil(waitTime / 60000);
+        setError(`Rate limited by Reddit. Automatic retry in ${waitMinutes} minute(s). Please avoid manual refreshes.`);
+      } else {
+        setError(`Failed to fetch Reddit data: ${errorMessage}`);
       }
-      
-      setError(`Failed to fetch Reddit data: ${errorMessage}. Using CORS proxy but Reddit may be blocking requests.`);
     } finally {
       setLoading(false);
     }
@@ -87,6 +96,13 @@ export const useRedditData = () => {
 
   const searchReddit = async (query: string) => {
     try {
+      // Check if we're rate limited before searching
+      if (redditApi.isRateLimited()) {
+        const waitTime = redditApi.getRateLimitWaitTime();
+        const waitMinutes = Math.ceil(waitTime / 60000);
+        throw new Error(`Rate limited. Please wait ${waitMinutes} minute(s) before searching.`);
+      }
+      
       setLoading(true);
       console.log('Searching Reddit for:', query);
       
@@ -108,7 +124,8 @@ export const useRedditData = () => {
       return formattedResults;
     } catch (err) {
       console.error('Reddit search failed:', err);
-      setError('Search failed. Reddit API may be temporarily unavailable.');
+      const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      setError(errorMessage);
       return [];
     } finally {
       setLoading(false);
@@ -118,18 +135,27 @@ export const useRedditData = () => {
   useEffect(() => {
     fetchRedditData();
     
-    // Refresh data every 15 minutes (less frequent to avoid rate limits)
-    const interval = setInterval(() => fetchRedditData(), 15 * 60 * 1000);
+    // Increase refresh interval to 30 minutes to reduce rate limiting
+    const interval = setInterval(() => {
+      // Only auto-refresh if we're not rate limited
+      if (!redditApi.isRateLimited()) {
+        fetchRedditData();
+      } else {
+        console.log('Skipping auto-refresh due to rate limiting');
+      }
+    }, 30 * 60 * 1000); // 30 minutes instead of 15
+    
     return () => clearInterval(interval);
   }, []);
 
   return {
     trendingTopics,
     recentPosts,
-    subredditData: [], // Would need additional API calls for subreddit stats
+    subredditData: [],
     loading,
     error,
+    lastFetchTime,
     searchReddit,
-    refreshData: () => fetchRedditData()
+    refreshData: () => fetchRedditData(true)
   };
 };
