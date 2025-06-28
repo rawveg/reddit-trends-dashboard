@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertCircle, CheckCircle, Clock, Wifi, WifiOff, Activity, Timer } from "lucide-react";
+import { RefreshCw, AlertCircle, CheckCircle, Clock, Wifi, WifiOff, Activity, Timer, ExternalLink, Info } from "lucide-react";
 import { useState } from "react";
 
 interface DataSourceIndicatorProps {
@@ -53,6 +53,7 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
   };
 
   const isRateLimited = error?.includes('Rate limited') || error?.includes('429');
+  const isCorsIssue = error?.includes('CORS') || error?.includes('fetch') || proxyStatus === 'failed';
 
   const getStatusIcon = () => {
     if (isRateLimited) return <Timer className="w-5 h-5 text-yellow-500" />;
@@ -63,6 +64,7 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
 
   const getStatusText = () => {
     if (isRateLimited) return "Rate Limited";
+    if (isCorsIssue) return "CORS Proxy Down";
     if (error) return "Connection Error";
     if (dataCount > 0) return "Live Data";
     return "No Data";
@@ -87,7 +89,7 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
       return <Badge variant="default" className="text-xs bg-green-100 text-green-800">Proxy OK</Badge>;
     }
     if (proxyStatus === 'failed') {
-      return <Badge variant="destructive" className="text-xs">Proxy Failed</Badge>;
+      return <Badge variant="destructive" className="text-xs">Proxy Down</Badge>;
     }
     return null;
   };
@@ -119,16 +121,45 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
               </div>
               
               {error && (
-                <div className="mt-2 space-y-1">
+                <div className="mt-2 space-y-2">
                   <p className="text-xs text-red-600">{error}</p>
+                  
                   {isRateLimited && (
-                    <div className="bg-yellow-50 p-2 rounded border border-yellow-200">
+                    <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
                       <p className="text-xs text-yellow-800">
                         <strong>Rate Limiting Active:</strong> Reddit limits API requests to prevent abuse. 
                         The app will automatically retry when the limit resets. Please avoid manual refreshes.
                       </p>
                     </div>
                   )}
+                  
+                  {isCorsIssue && (
+                    <div className="bg-red-50 p-3 rounded border border-red-200">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs text-red-800 space-y-2">
+                          <p><strong>CORS Proxy Unavailable:</strong> The service we use to bypass browser restrictions is currently down.</p>
+                          <div className="space-y-1">
+                            <p><strong>Why this happens:</strong></p>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>Browsers block direct requests to Reddit from web apps</li>
+                              <li>We rely on a third-party CORS proxy service</li>
+                              <li>These free services can be unreliable</li>
+                            </ul>
+                          </div>
+                          <div className="space-y-1">
+                            <p><strong>Solutions:</strong></p>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>Wait for the proxy service to come back online</li>
+                              <li>Try refreshing in a few minutes</li>
+                              <li>For production use, set up your own backend API</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {!isRateLimited && (
                     <div className="flex items-center gap-2">
                       <Button
@@ -139,13 +170,18 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
                         className="text-xs h-6"
                       >
                         <Activity className={`w-3 h-3 mr-1 ${testingProxy ? 'animate-pulse' : ''}`} />
-                        {testingProxy ? 'Testing...' : 'Test Connection'}
+                        {testingProxy ? 'Testing...' : 'Test Proxy'}
                       </Button>
-                      {proxyStatus === 'failed' && (
-                        <span className="text-xs text-red-600">
-                          CORS proxy unavailable
-                        </span>
-                      )}
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open('https://www.redditstatus.com/', '_blank')}
+                        className="text-xs h-6"
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        Reddit Status
+                      </Button>
                     </div>
                   )}
                 </div>
