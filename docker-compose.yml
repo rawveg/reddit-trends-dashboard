@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  reddit-trends-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.reddit-trends.rule=Host(`reddit-trends.localhost`)"
+      - "traefik.http.services.reddit-trends.loadbalancer.server.port=80"
+
+  # Optional: Add a reverse proxy for production
+  # nginx-proxy:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - reddit-trends-dashboard
+  #   restart: unless-stopped
+
+networks:
+  default:
+    name: reddit-trends-network

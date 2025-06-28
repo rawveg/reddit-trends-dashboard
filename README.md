@@ -4,7 +4,10 @@ A comprehensive Reddit trend analysis application built with React, TypeScript, 
 
 ![Reddit Trends Dashboard](https://img.shields.io/badge/React-18.3.1-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5.3-blue)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 ![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
+
+![](screenshot.png)
 
 ## 🚀 Features
 
@@ -45,23 +48,31 @@ A comprehensive Reddit trend analysis application built with React, TypeScript, 
 - **Data Fetching**: Custom Reddit API service
 - **Icons**: Lucide React
 - **Build Tool**: Vite
+- **Containerization**: Docker with multi-stage builds
 
 ## 📋 Prerequisites
 
+### Local Development
 - Node.js 18+ 
 - npm or yarn package manager
 - Modern web browser with ES2020+ support
 
+### Docker Deployment
+- Docker 20.10+
+- Docker Compose 2.0+ (optional)
+
 ## 🚀 Quick Start
 
-### 1. Clone the Repository
+### Option 1: Local Development
+
+#### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd reddit-trends-dashboard
 ```
 
-### 2. Install Dependencies
+#### 2. Install Dependencies
 
 ```bash
 npm install
@@ -69,7 +80,7 @@ npm install
 yarn install
 ```
 
-### 3. Start Development Server
+#### 3. Start Development Server
 
 ```bash
 npm run dev
@@ -79,12 +90,58 @@ yarn dev
 
 The application will be available at `http://localhost:8080`
 
-### 4. Build for Production
+#### 4. Build for Production
 
 ```bash
 npm run build
 # or
 yarn build
+```
+
+### Option 2: Docker Deployment
+
+#### Quick Start with Docker
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd reddit-trends-dashboard
+
+# Build and run with Docker
+docker build -t reddit-trends-dashboard .
+docker run -p 3000:80 reddit-trends-dashboard
+```
+
+The application will be available at `http://localhost:3000`
+
+#### Using Docker Compose
+
+```bash
+# Start the application
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the application
+docker-compose down
+```
+
+#### Production Docker Deployment
+
+```bash
+# Build for production
+docker build -t reddit-trends-dashboard:latest .
+
+# Run with custom port and environment
+docker run -d \
+  --name reddit-trends \
+  -p 80:80 \
+  --restart unless-stopped \
+  reddit-trends-dashboard:latest
+
+# Check health
+docker exec reddit-trends wget --spider http://localhost/health
 ```
 
 ## 🔧 Configuration
@@ -100,6 +157,15 @@ VITE_CORS_PROXY_URL=https://api.allorigins.win/raw?url=
 # Optional: Reddit API credentials (for production use)
 VITE_REDDIT_CLIENT_ID=your_client_id
 VITE_REDDIT_CLIENT_SECRET=your_client_secret
+```
+
+### Docker Environment Variables
+
+```bash
+# Set environment variables for Docker
+docker run -p 3000:80 \
+  -e VITE_CORS_PROXY_URL=https://your-proxy.com \
+  reddit-trends-dashboard
 ```
 
 ### Reddit API Setup (Optional)
@@ -144,6 +210,42 @@ The main dashboard provides several key sections:
 2. Enter a keyword and mention threshold
 3. Enable the alert toggle
 4. Receive notifications when thresholds are exceeded
+
+## 🐳 Docker Details
+
+### Multi-Stage Build
+
+The Dockerfile uses a multi-stage build process:
+
+1. **Builder Stage**: Installs dependencies and builds the React app
+2. **Production Stage**: Serves the built app with nginx
+
+### Container Features
+
+- **Lightweight**: Based on Alpine Linux for minimal size
+- **Optimized**: Multi-stage build reduces final image size
+- **Secure**: Includes security headers and best practices
+- **Health Checks**: Built-in health monitoring
+- **Caching**: Optimized nginx configuration for static assets
+
+### Container Management
+
+```bash
+# View running containers
+docker ps
+
+# Check container logs
+docker logs reddit-trends-dashboard
+
+# Execute commands in container
+docker exec -it reddit-trends-dashboard sh
+
+# Update container
+docker pull reddit-trends-dashboard:latest
+docker stop reddit-trends-dashboard
+docker rm reddit-trends-dashboard
+docker run -d --name reddit-trends-dashboard -p 3000:80 reddit-trends-dashboard:latest
+```
 
 ## 🔍 API Integration
 
@@ -203,6 +305,35 @@ The app implements intelligent rate limiting:
 - Try simpler search terms
 - Check the error message in the data source indicator
 
+### Docker Issues
+
+**Container Won't Start**
+```bash
+# Check container logs
+docker logs reddit-trends-dashboard
+
+# Verify port availability
+netstat -tulpn | grep :3000
+```
+
+**Build Failures**
+```bash
+# Clear Docker cache
+docker system prune -a
+
+# Rebuild without cache
+docker build --no-cache -t reddit-trends-dashboard .
+```
+
+**Permission Issues**
+```bash
+# Fix file permissions
+chmod +x docker-entrypoint.sh
+
+# Run with specific user
+docker run --user $(id -u):$(id -g) reddit-trends-dashboard
+```
+
 ### Development Issues
 
 **Build Errors**
@@ -224,6 +355,69 @@ npx tsc --noEmit
 npm run build:css
 ```
 
+## 🚀 Deployment
+
+### Production Deployment Options
+
+#### 1. Docker on VPS/Cloud
+
+```bash
+# Deploy to production server
+docker build -t reddit-trends-dashboard .
+docker run -d \
+  --name reddit-trends \
+  -p 80:80 \
+  --restart unless-stopped \
+  reddit-trends-dashboard
+```
+
+#### 2. Docker with Reverse Proxy
+
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+services:
+  app:
+    build: .
+    restart: unless-stopped
+  
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+```
+
+#### 3. Kubernetes Deployment
+
+```yaml
+# k8s-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reddit-trends-dashboard
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: reddit-trends-dashboard
+  template:
+    metadata:
+      labels:
+        app: reddit-trends-dashboard
+    spec:
+      containers:
+      - name: reddit-trends-dashboard
+        image: reddit-trends-dashboard:latest
+        ports:
+        - containerPort: 80
+```
+
 ## 🤝 Contributing
 
 We welcome contributions! Please follow these steps:
@@ -242,6 +436,7 @@ We welcome contributions! Please follow these steps:
 - Include responsive design
 - Test on multiple browsers
 - Document new features
+- Test Docker builds before submitting
 
 ### Code Style
 
@@ -253,7 +448,7 @@ We welcome contributions! Please follow these steps:
 
 ## 📄 License
 
-This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE)
 
 ### What this means:
 
@@ -279,6 +474,8 @@ We chose AGPL-3.0 to ensure that improvements to this software remain open sourc
 - **Tailwind CSS**: For utility-first styling
 - **Lucide**: For beautiful icons
 - **Vite**: For fast development experience
+- **Docker**: For containerization platform
+- **nginx**: For high-performance web server
 
 ## 📞 Support
 
@@ -299,6 +496,8 @@ We chose AGPL-3.0 to ensure that improvements to this software remain open sourc
 - [ ] Advanced filtering options
 - [ ] Machine learning predictions
 - [ ] Multi-platform support (Twitter, etc.)
+- [ ] Kubernetes Helm charts
+- [ ] CI/CD pipeline integration
 
 ### Performance Improvements
 
@@ -306,9 +505,11 @@ We chose AGPL-3.0 to ensure that improvements to this software remain open sourc
 - [ ] Optimized chart rendering
 - [ ] Lazy loading for large datasets
 - [ ] Service worker for offline support
+- [ ] Container image optimization
+- [ ] CDN integration
 
 ---
 
-**Built with ❤️ using modern web technologies**
+**Built with ❤️ using modern web technologies and containerized for easy deployment**
 
-For more information, visit our [GitHub repository](https://github.com/your-username/reddit-trends-dashboard).
+For more information, visit our [GitHub repository](https://github.com/rawveg/reddit-trends-dashboard).
