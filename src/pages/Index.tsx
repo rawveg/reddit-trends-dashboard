@@ -4,12 +4,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { Search, TrendingUp, MessageCircle, Users, Calendar } from "lucide-react";
+import { Search, TrendingUp, MessageCircle, Users, Calendar, Globe, Hash, Radio, Bell } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import TrendingTopicCard from "@/components/TrendingTopicCard";
 import SearchFilters from "@/components/SearchFilters";
 import TopDiscussions from "@/components/TopDiscussions";
 import TrendComparison from "@/components/TrendComparison";
+import SentimentAnalysis from "@/components/SentimentAnalysis";
+import TrendingHashtags from "@/components/TrendingHashtags";
+import LiveFeed from "@/components/LiveFeed";
+import TrendMap from "@/components/TrendMap";
+import AlertsNotifications from "@/components/AlertsNotifications";
 
 // Mock data for trending topics
 const trendingTopics = [
@@ -117,6 +122,7 @@ const Index = () => {
             </Card>
 
             <SearchFilters onFiltersChange={handleFiltersChange} />
+            <TrendingHashtags />
           </div>
 
           {/* Main Content Area */}
@@ -153,11 +159,13 @@ const Index = () => {
 
             {/* Tabs for different views */}
             <Tabs defaultValue="subreddits" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="subreddits">Top Subreddits</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="subreddits">Subreddits</TabsTrigger>
                 <TabsTrigger value="discussions">Discussions</TabsTrigger>
+                <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
                 <TabsTrigger value="compare">Compare</TabsTrigger>
-                <TabsTrigger value="insights">Insights</TabsTrigger>
+                <TabsTrigger value="geographic">Geographic</TabsTrigger>
+                <TabsTrigger value="alerts">Alerts</TabsTrigger>
               </TabsList>
               
               <TabsContent value="subreddits">
@@ -189,91 +197,62 @@ const Index = () => {
                 <TopDiscussions topic={selectedTopic.term} />
               </TabsContent>
 
+              <TabsContent value="sentiment">
+                <SentimentAnalysis topic={selectedTopic.term} />
+              </TabsContent>
+
               <TabsContent value="compare">
                 <TrendComparison availableTopics={trendingTopics.map(t => t.term)} />
               </TabsContent>
-              
-              <TabsContent value="insights">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Key Insights</CardTitle>
-                    <CardDescription>
-                      Analysis of {selectedTopic.term} discussions
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-6 bg-orange-50 rounded-lg border">
-                        <div className="text-3xl font-bold text-orange-600">
-                          {selectedTopic.mentions.toLocaleString()}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">Total Mentions</div>
-                      </div>
-                      <div className="text-center p-6 bg-blue-50 rounded-lg border">
-                        <div className="text-3xl font-bold text-blue-600">
-                          {selectedTopic.subreddits.length}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">Active Subreddits</div>
-                      </div>
-                      <div className="text-center p-6 bg-green-50 rounded-lg border">
-                        <div className="text-3xl font-bold text-green-600">
-                          {selectedTopic.growth}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">24h Growth</div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg">Sentiment Analysis</h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm">Positive</span>
-                            <span className="text-sm font-medium">65%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-500 h-2 rounded-full" style={{ width: "65%" }}></div>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm">Neutral</span>
-                            <span className="text-sm font-medium">25%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-gray-500 h-2 rounded-full" style={{ width: "25%" }}></div>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm">Negative</span>
-                            <span className="text-sm font-medium">10%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-red-500 h-2 rounded-full" style={{ width: "10%" }}></div>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-lg">Peak Activity</h4>
-                        <div className="space-y-3">
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm font-medium">Wednesday 2:00 PM EST</p>
-                            <p className="text-xs text-gray-600">9,800 mentions - Highest activity</p>
-                          </div>
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm font-medium">Friday 6:00 PM EST</p>
-                            <p className="text-xs text-gray-600">4,800 mentions - Weekend spike</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              <TabsContent value="geographic">
+                <TrendMap />
+              </TabsContent>
+
+              <TabsContent value="alerts">
+                <AlertsNotifications />
               </TabsContent>
             </Tabs>
           </div>
+        </div>
+
+        {/* Bottom Section - Live Feed */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LiveFeed />
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Stats</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-orange-50 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {trendingTopics.reduce((sum, topic) => sum + topic.mentions, 0).toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600">Total Mentions Today</div>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {trendingTopics.length}
+                  </div>
+                  <div className="text-sm text-gray-600">Trending Topics</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {trendingTopics.filter(t => t.growth.startsWith("+")).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Growing Topics</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    24/7
+                  </div>
+                  <div className="text-sm text-gray-600">Live Monitoring</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <MadeWithDyad />
