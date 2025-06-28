@@ -4,8 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { Search, TrendingUp, MessageCircle, Users, Calendar, Globe, Hash, Radio, Bell } from "lucide-react";
+import { Search, TrendingUp, MessageCircle, Users, Calendar, AlertTriangle } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
+import { useRedditData } from "@/hooks/useRedditData";
+import DataSourceIndicator from "@/components/DataSourceIndicator";
+import ApiSetupGuide from "@/components/ApiSetupGuide";
 import TrendingTopicCard from "@/components/TrendingTopicCard";
 import SearchFilters from "@/components/SearchFilters";
 import TopDiscussions from "@/components/TopDiscussions";
@@ -17,107 +20,40 @@ import TrendMap from "@/components/TrendMap";
 import AlertsNotifications from "@/components/AlertsNotifications";
 import SearchResults from "@/components/SearchResults";
 
-// Mock data for trending topics
-const trendingTopics = [
-  { term: "artificial intelligence", mentions: 15420, growth: "+45%", subreddits: ["r/MachineLearning", "r/technology", "r/singularity"] },
-  { term: "climate change", mentions: 12890, growth: "+23%", subreddits: ["r/environment", "r/science", "r/worldnews"] },
-  { term: "cryptocurrency", mentions: 11250, growth: "-12%", subreddits: ["r/CryptoCurrency", "r/Bitcoin", "r/ethereum"] },
-  { term: "space exploration", mentions: 9870, growth: "+67%", subreddits: ["r/space", "r/SpaceX", "r/nasa"] },
-  { term: "gaming", mentions: 8940, growth: "+18%", subreddits: ["r/gaming", "r/pcmasterrace", "r/nintendo"] },
-  { term: "electric vehicles", mentions: 7650, growth: "+34%", subreddits: ["r/electricvehicles", "r/teslamotors", "r/cars"] },
-  { term: "mental health", mentions: 6890, growth: "+28%", subreddits: ["r/mentalhealth", "r/depression", "r/anxiety"] },
-];
-
-// Mock data for charts
-const weeklyData = [
-  { day: "Mon", mentions: 2400 },
-  { day: "Tue", mentions: 1398 },
-  { day: "Wed", mentions: 9800 },
-  { day: "Thu", mentions: 3908 },
-  { day: "Fri", mentions: 4800 },
-  { day: "Sat", mentions: 3800 },
-  { day: "Sun", mentions: 4300 },
-];
-
-const subredditData = [
-  { name: "r/technology", mentions: 3400 },
-  { name: "r/worldnews", mentions: 2800 },
-  { name: "r/science", mentions: 2200 },
-  { name: "r/gaming", mentions: 1900 },
-  { name: "r/politics", mentions: 1600 },
-];
-
-// Mock search data
-const mockSearchData = {
-  "ai": [
-    { type: "topic" as const, title: "artificial intelligence", mentions: 15420, growth: "+45%", description: "Discussions about AI technology, machine learning, and automation" },
-    { type: "topic" as const, title: "machine learning", mentions: 8930, growth: "+67%", description: "Technical discussions about ML algorithms and applications" },
-    { type: "subreddit" as const, title: "r/MachineLearning", mentions: 2340, description: "Community for machine learning researchers and practitioners" },
-    { type: "subreddit" as const, title: "r/artificial", mentions: 1890, description: "General AI discussion and news" },
-    { type: "post" as const, title: "New AI breakthrough achieves human-level performance", subreddit: "r/technology", upvotes: 2340, comments: 456, timeAgo: "3 hours ago" },
-    { type: "post" as const, title: "How AI is changing the job market", subreddit: "r/futurology", upvotes: 1890, comments: 234, timeAgo: "5 hours ago" },
-  ],
-  "climate": [
-    { type: "topic" as const, title: "climate change", mentions: 12890, growth: "+23%", description: "Environmental discussions and climate science" },
-    { type: "topic" as const, title: "global warming", mentions: 7650, growth: "+18%", description: "Temperature rise and environmental impact discussions" },
-    { type: "subreddit" as const, title: "r/environment", mentions: 3400, description: "Environmental news and discussion" },
-    { type: "subreddit" as const, title: "r/climatechange", mentions: 2100, description: "Climate science and policy discussions" },
-    { type: "post" as const, title: "Climate summit reaches historic agreement", subreddit: "r/worldnews", upvotes: 3450, comments: 567, timeAgo: "2 hours ago" },
-    { type: "post" as const, title: "New study shows accelerating ice melt", subreddit: "r/science", upvotes: 2890, comments: 345, timeAgo: "4 hours ago" },
-  ],
-  "crypto": [
-    { type: "topic" as const, title: "cryptocurrency", mentions: 11250, growth: "-12%", description: "Digital currency discussions and market analysis" },
-    { type: "topic" as const, title: "bitcoin", mentions: 8940, growth: "-8%", description: "Bitcoin price, technology, and adoption discussions" },
-    { type: "subreddit" as const, title: "r/CryptoCurrency", mentions: 4200, description: "General cryptocurrency discussion and news" },
-    { type: "subreddit" as const, title: "r/Bitcoin", mentions: 3100, description: "Bitcoin-focused community" },
-    { type: "post" as const, title: "Bitcoin reaches new monthly high", subreddit: "r/CryptoCurrency", upvotes: 1890, comments: 234, timeAgo: "1 hour ago" },
-    { type: "post" as const, title: "Ethereum 2.0 update progress", subreddit: "r/ethereum", upvotes: 1567, comments: 189, timeAgo: "6 hours ago" },
-  ]
-};
-
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTopic, setSelectedTopic] = useState(trendingTopics[0]);
+  const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
   const [filters, setFilters] = useState({});
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = () => {
+  const { 
+    trendingTopics, 
+    recentPosts, 
+    subredditData, 
+    loading, 
+    error, 
+    searchReddit, 
+    refreshData 
+  } = useRedditData();
+
+  const selectedTopic = trendingTopics[selectedTopicIndex] || { 
+    term: "No data available", 
+    mentions: 0, 
+    growth: "0%", 
+    subreddits: [] 
+  };
+
+  const handleSearch = async () => {
     if (searchTerm.trim()) {
       setIsSearching(true);
-      
-      // Simulate API call delay
-      setTimeout(() => {
-        const query = searchTerm.toLowerCase();
-        let results: any[] = [];
-        
-        // Search through mock data
-        Object.entries(mockSearchData).forEach(([key, data]) => {
-          if (query.includes(key) || key.includes(query)) {
-            results = [...results, ...data];
-          }
-        });
-        
-        // Also search through trending topics
-        trendingTopics.forEach(topic => {
-          if (topic.term.toLowerCase().includes(query) || query.includes(topic.term.toLowerCase())) {
-            results.push({
-              type: "topic",
-              title: topic.term,
-              mentions: topic.mentions,
-              growth: topic.growth,
-              description: `Trending topic with ${topic.mentions.toLocaleString()} mentions`
-            });
-          }
-        });
-        
-        // Remove duplicates
-        const uniqueResults = results.filter((result, index, self) => 
-          index === self.findIndex(r => r.title === result.title && r.type === result.type)
-        );
-        
-        setSearchResults(uniqueResults);
-      }, 500);
+      try {
+        const results = await searchReddit(searchTerm);
+        setSearchResults(results);
+      } catch (err) {
+        console.error('Search failed:', err);
+        setSearchResults([]);
+      }
     }
   };
 
@@ -131,6 +67,17 @@ const Index = () => {
     setFilters(newFilters);
   };
 
+  // Mock chart data - in real app this would come from Reddit API
+  const weeklyData = [
+    { day: "Mon", mentions: 2400 },
+    { day: "Tue", mentions: 1398 },
+    { day: "Wed", mentions: 9800 },
+    { day: "Thu", mentions: 3908 },
+    { day: "Fri", mentions: 4800 },
+    { day: "Sat", mentions: 3800 },
+    { day: "Sun", mentions: 4300 },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -141,23 +88,41 @@ const Index = () => {
             Reddit Trends
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Discover what's trending across Reddit communities in real-time. 
-            Track discussions, analyze sentiment, and explore emerging topics.
+            Real-time Reddit trend analysis and monitoring. 
+            Connect to Reddit API for live data and insights.
           </p>
         </div>
+
+        {/* Data Source Indicator */}
+        <DataSourceIndicator 
+          lastUpdated={new Date()}
+          isLoading={loading}
+          error={error}
+          onRefresh={refreshData}
+        />
+
+        {/* API Setup Guide - Show when no data */}
+        {trendingTopics.length === 0 && !loading && (
+          <ApiSetupGuide />
+        )}
 
         {/* Search Bar */}
         <Card className="w-full max-w-4xl mx-auto">
           <CardContent className="p-6">
             <div className="flex gap-2">
               <Input
-                placeholder="Search for topics, keywords, or subreddits..."
+                placeholder="Search Reddit for topics, keywords, or subreddits..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSearch()}
                 className="flex-1 text-lg"
+                disabled={loading}
               />
-              <Button onClick={handleSearch} className="bg-orange-500 hover:bg-orange-600 px-6">
+              <Button 
+                onClick={handleSearch} 
+                className="bg-orange-500 hover:bg-orange-600 px-6"
+                disabled={loading || !searchTerm.trim()}
+              >
                 <Search className="w-5 h-5" />
               </Button>
             </div>
@@ -165,7 +130,7 @@ const Index = () => {
         </Card>
 
         {/* Search Results */}
-        {isSearching && searchResults.length >= 0 && (
+        {isSearching && (
           <SearchResults 
             query={searchTerm}
             results={searchResults}
@@ -173,11 +138,11 @@ const Index = () => {
           />
         )}
 
-        {/* Main Content - Only show when not searching */}
-        {!isSearching && (
+        {/* Main Content - Only show when not searching and have data */}
+        {!isSearching && trendingTopics.length > 0 && (
           <>
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-              {/* Left Sidebar - Trending Topics and Filters */}
+              {/* Left Sidebar */}
               <div className="xl:col-span-1 space-y-6">
                 <Card>
                   <CardHeader>
@@ -186,7 +151,7 @@ const Index = () => {
                       Trending Now
                     </CardTitle>
                     <CardDescription>
-                      Most discussed topics in the last 24 hours
+                      Live trending topics from Reddit
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -195,8 +160,8 @@ const Index = () => {
                         key={topic.term}
                         topic={topic}
                         index={index}
-                        isSelected={selectedTopic.term === topic.term}
-                        onClick={() => setSelectedTopic(topic)}
+                        isSelected={selectedTopicIndex === index}
+                        onClick={() => setSelectedTopicIndex(index)}
                       />
                     ))}
                   </CardContent>
@@ -257,19 +222,26 @@ const Index = () => {
                           Top Subreddits
                         </CardTitle>
                         <CardDescription>
-                          Communities driving the conversation about {selectedTopic.term}
+                          Communities discussing {selectedTopic.term}
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={subredditData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="mentions" fill="#f97316" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        {subredditData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={subredditData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip />
+                              <Bar dataKey="mentions" fill="#f97316" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="text-center py-12 text-gray-500">
+                            <AlertTriangle className="w-12 h-12 mx-auto mb-4" />
+                            <p>Connect to Reddit API to see subreddit data</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -297,13 +269,13 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Bottom Section - Live Feed */}
+            {/* Bottom Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <LiveFeed />
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Quick Stats</CardTitle>
+                  <CardTitle>Analytics Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
@@ -311,7 +283,7 @@ const Index = () => {
                       <div className="text-2xl font-bold text-orange-600">
                         {trendingTopics.reduce((sum, topic) => sum + topic.mentions, 0).toLocaleString()}
                       </div>
-                      <div className="text-sm text-gray-600">Total Mentions Today</div>
+                      <div className="text-sm text-gray-600">Total Mentions</div>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <div className="text-2xl font-bold text-blue-600">
@@ -327,15 +299,25 @@ const Index = () => {
                     </div>
                     <div className="text-center p-4 bg-purple-50 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600">
-                        24/7
+                        Live
                       </div>
-                      <div className="text-sm text-gray-600">Live Monitoring</div>
+                      <div className="text-sm text-gray-600">Data Source</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
           </>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading Reddit data...</p>
+            </CardContent>
+          </Card>
         )}
 
         <MadeWithDyad />
