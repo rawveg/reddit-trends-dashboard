@@ -18,6 +18,11 @@ import TrendMap from "@/components/TrendMap";
 import AlertsNotifications from "@/components/AlertsNotifications";
 import SearchResults from "@/components/SearchResults";
 import LiveFeed from "@/components/LiveFeed";
+import EngagementMetrics from "@/components/EngagementMetrics";
+import VelocityChart from "@/components/VelocityChart";
+import NetworkGraph from "@/components/NetworkGraph";
+import TrendingKeywords from "@/components/TrendingKeywords";
+import RealTimeMetrics from "@/components/RealTimeMetrics";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -163,22 +168,19 @@ const Index = () => {
               peakHour={peakHour}
             />
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-              {/* Left Sidebar - Trending Topics */}
+            {/* Main Content Grid - Optimized Layout */}
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+              {/* Left Sidebar - Reduced width */}
               <div className="xl:col-span-1 space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="w-5 h-5 text-orange-500" />
-                      Trending Topics
+                      Trending
                     </CardTitle>
-                    <CardDescription>
-                      Real-time trending discussions
-                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {trendingTopics.slice(0, 8).map((topic, index) => (
+                    {trendingTopics.slice(0, 6).map((topic, index) => (
                       <TrendingTopicCard
                         key={topic.term}
                         topic={topic}
@@ -189,14 +191,27 @@ const Index = () => {
                     ))}
                   </CardContent>
                 </Card>
-
-                <LiveFeed />
               </div>
 
-              {/* Main Analytics Area */}
-              <div className="xl:col-span-3 space-y-6">
+              {/* Main Analytics Area - Expanded */}
+              <div className="xl:col-span-4 space-y-6">
+                {/* Real-time metrics at the top */}
+                <RealTimeMetrics />
+
                 {/* Topic Evolution Chart */}
                 <TopicEvolution />
+
+                {/* Grid of additional charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <VelocityChart />
+                  <TrendingKeywords />
+                </div>
+
+                {/* Engagement metrics */}
+                <EngagementMetrics />
+
+                {/* Network graph */}
+                <NetworkGraph />
 
                 {/* Analytics Tabs */}
                 <Tabs defaultValue="sentiment" className="w-full">
@@ -232,20 +247,19 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Bottom Analytics Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Bottom Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <LiveFeed />
+              
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageCircle className="w-5 h-5 text-orange-500" />
-                    Recent High-Impact Posts
+                    Recent Posts
                   </CardTitle>
-                  <CardDescription>
-                    Posts with highest engagement in the last hour
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                  {recentPosts.slice(0, 10).map((post) => (
+                  {recentPosts.slice(0, 8).map((post) => (
                     <div key={post.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                       <h4 className="font-medium text-sm leading-tight mb-2">
                         {post.title}
@@ -254,8 +268,6 @@ const Index = () => {
                         <span className="font-medium text-blue-600">r/{post.subreddit}</span>
                         <span>•</span>
                         <span>{post.upvotes} upvotes</span>
-                        <span>•</span>
-                        <span>{post.comments} comments</span>
                         <span>•</span>
                         <span>{post.timeAgo}</span>
                       </div>
@@ -268,30 +280,27 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-green-500" />
-                    Analytics Summary
+                    Key Insights
                   </CardTitle>
-                  <CardDescription>
-                    Key insights from current data
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="p-4 bg-blue-50 rounded-lg">
-                      <h4 className="font-semibold text-blue-800 mb-2">Most Active Community</h4>
+                      <h4 className="font-semibold text-blue-800 mb-2">Most Active</h4>
                       <p className="text-sm text-blue-700">
                         r/technology leads with {Math.floor(totalMentions * 0.3).toLocaleString()} mentions
                       </p>
                     </div>
                     <div className="p-4 bg-green-50 rounded-lg">
-                      <h4 className="font-semibold text-green-800 mb-2">Sentiment Trend</h4>
+                      <h4 className="font-semibold text-green-800 mb-2">Sentiment</h4>
                       <p className="text-sm text-green-700">
-                        Overall sentiment is positive (7.2/10) with increasing optimism
+                        Overall positive (7.2/10) with increasing optimism
                       </p>
                     </div>
                     <div className="p-4 bg-purple-50 rounded-lg">
-                      <h4 className="font-semibold text-purple-800 mb-2">Peak Activity</h4>
+                      <h4 className="font-semibold text-purple-800 mb-2">Peak Time</h4>
                       <p className="text-sm text-purple-700">
-                        Highest activity between 2-4 PM EST across all communities
+                        Highest activity 2-4 PM EST
                       </p>
                     </div>
                   </div>
