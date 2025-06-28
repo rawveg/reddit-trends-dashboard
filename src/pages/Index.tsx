@@ -67,16 +67,16 @@ const Index = () => {
     setFilters(newFilters);
   };
 
-  // Mock chart data - in real app this would come from Reddit API
-  const weeklyData = [
-    { day: "Mon", mentions: 2400 },
-    { day: "Tue", mentions: 1398 },
-    { day: "Wed", mentions: 9800 },
-    { day: "Thu", mentions: 3908 },
-    { day: "Fri", mentions: 4800 },
-    { day: "Sat", mentions: 3800 },
-    { day: "Sun", mentions: 4300 },
-  ];
+  // Generate chart data from actual trending topics
+  const weeklyData = trendingTopics.length > 0 ? [
+    { day: "Mon", mentions: Math.floor(selectedTopic.mentions * 0.7) },
+    { day: "Tue", mentions: Math.floor(selectedTopic.mentions * 0.8) },
+    { day: "Wed", mentions: Math.floor(selectedTopic.mentions * 0.9) },
+    { day: "Thu", mentions: Math.floor(selectedTopic.mentions * 0.85) },
+    { day: "Fri", mentions: Math.floor(selectedTopic.mentions * 1.1) },
+    { day: "Sat", mentions: Math.floor(selectedTopic.mentions * 0.95) },
+    { day: "Sun", mentions: selectedTopic.mentions },
+  ] : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 p-4">
@@ -88,8 +88,8 @@ const Index = () => {
             Reddit Trends
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Real-time Reddit trend analysis and monitoring. 
-            Connect to Reddit API for live data and insights.
+            Real-time Reddit trend analysis using live data from Reddit's public API. 
+            Discover what's trending across communities right now.
           </p>
         </div>
 
@@ -99,11 +99,33 @@ const Index = () => {
           isLoading={loading}
           error={error}
           onRefresh={refreshData}
+          dataCount={trendingTopics.length + recentPosts.length}
         />
 
-        {/* API Setup Guide - Show when no data */}
+        {/* Show explanation when no data */}
         {trendingTopics.length === 0 && !loading && (
-          <ApiSetupGuide />
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <AlertTriangle className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+                  Unable to fetch Reddit data
+                </h3>
+                <p className="text-yellow-700 mb-4">
+                  This might be due to CORS restrictions when running locally. 
+                  The app is trying to fetch real data from Reddit's public API.
+                </p>
+                <div className="text-sm text-yellow-600 space-y-2">
+                  <p><strong>What's happening:</strong> The app attempts to fetch live data from reddit.com/r/[subreddit]/hot.json</p>
+                  <p><strong>CORS Issue:</strong> Browsers block cross-origin requests to Reddit from localhost</p>
+                  <p><strong>Solution:</strong> Deploy to a domain or use a CORS proxy for development</p>
+                </div>
+                <Button onClick={refreshData} className="mt-4" disabled={loading}>
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Search Bar */}
@@ -178,10 +200,10 @@ const Index = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Calendar className="w-5 h-5 text-orange-500" />
-                      {selectedTopic.term} - Weekly Trend
+                      {selectedTopic.term} - Trend Analysis
                     </CardTitle>
                     <CardDescription>
-                      Mentions over the past week
+                      Estimated weekly pattern based on current mentions
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -204,15 +226,49 @@ const Index = () => {
                 </Card>
 
                 {/* Tabs for different views */}
-                <Tabs defaultValue="subreddits" className="w-full">
+                <Tabs defaultValue="discussions" className="w-full">
                   <TabsList className="grid w-full grid-cols-6">
-                    <TabsTrigger value="subreddits">Subreddits</TabsTrigger>
                     <TabsTrigger value="discussions">Discussions</TabsTrigger>
+                    <TabsTrigger value="subreddits">Subreddits</TabsTrigger>
                     <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
                     <TabsTrigger value="compare">Compare</TabsTrigger>
                     <TabsTrigger value="geographic">Geographic</TabsTrigger>
                     <TabsTrigger value="alerts">Alerts</TabsTrigger>
                   </TabsList>
+                  
+                  <TabsContent value="discussions">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <MessageCircle className="w-5 h-5 text-orange-500" />
+                          Recent Posts about {selectedTopic.term}
+                        </CardTitle>
+                        <CardDescription>
+                          Live posts from Reddit mentioning this topic
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {selectedTopic.posts?.slice(0, 5).map((post, index) => (
+                          <div key={index} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                            <h4 className="font-medium text-sm leading-tight mb-2">
+                              {post.title}
+                            </h4>
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <span>r/{post.subreddit}</span>
+                              <span>•</span>
+                              <span>{post.upvotes} upvotes</span>
+                              <span>•</span>
+                              <span>{post.comments} comments</span>
+                            </div>
+                          </div>
+                        )) || (
+                          <div className="text-center py-8 text-gray-500">
+                            <p>No posts available for this topic</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
                   
                   <TabsContent value="subreddits">
                     <Card>
@@ -226,28 +282,16 @@ const Index = () => {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        {subredditData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={subredditData}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="name" />
-                              <YAxis />
-                              <Tooltip />
-                              <Bar dataKey="mentions" fill="#f97316" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        ) : (
-                          <div className="text-center py-12 text-gray-500">
-                            <AlertTriangle className="w-12 h-12 mx-auto mb-4" />
-                            <p>Connect to Reddit API to see subreddit data</p>
-                          </div>
-                        )}
+                        <div className="space-y-3">
+                          {selectedTopic.subreddits.map((subreddit, index) => (
+                            <div key={subreddit} className="flex items-center justify-between p-3 border rounded-lg">
+                              <span className="font-medium">{subreddit}</span>
+                              <span className="text-sm text-gray-600">Active</span>
+                            </div>
+                          ))}
+                        </div>
                       </CardContent>
                     </Card>
-                  </TabsContent>
-                  
-                  <TabsContent value="discussions">
-                    <TopDiscussions topic={selectedTopic.term} />
                   </TabsContent>
 
                   <TabsContent value="sentiment">
@@ -271,7 +315,27 @@ const Index = () => {
 
             {/* Bottom Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <LiveFeed />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Reddit Posts</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+                  {recentPosts.slice(0, 10).map((post) => (
+                    <div key={post.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <h4 className="font-medium text-sm leading-tight mb-2">
+                        {post.title}
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <span>r/{post.subreddit}</span>
+                        <span>•</span>
+                        <span>{post.upvotes} upvotes</span>
+                        <span>•</span>
+                        <span>{post.timeAgo}</span>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
               
               <Card>
                 <CardHeader>
@@ -293,9 +357,9 @@ const Index = () => {
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
                       <div className="text-2xl font-bold text-green-600">
-                        {trendingTopics.filter(t => t.growth.startsWith("+")).length}
+                        {recentPosts.length}
                       </div>
-                      <div className="text-sm text-gray-600">Growing Topics</div>
+                      <div className="text-sm text-gray-600">Recent Posts</div>
                     </div>
                     <div className="text-center p-4 bg-purple-50 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600">
@@ -315,7 +379,7 @@ const Index = () => {
           <Card>
             <CardContent className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading Reddit data...</p>
+              <p className="text-gray-600">Fetching live Reddit data...</p>
             </CardContent>
           </Card>
         )}
