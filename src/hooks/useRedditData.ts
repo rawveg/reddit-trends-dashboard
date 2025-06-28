@@ -25,34 +25,43 @@ export const useRedditData = () => {
   const [recentPosts, setRecentPosts] = useState<RedditPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const fetchRedditData = async () => {
+  const fetchRedditData = async (isRetry = false) => {
     try {
       setLoading(true);
-      setError(null);
+      if (!isRetry) {
+        setError(null);
+      }
       
-      console.log('Fetching real Reddit data...');
+      console.log('Fetching Reddit data with CORS proxy...');
       
       // Fetch trending posts from multiple subreddits
       const posts = await redditApi.fetchTrendingFromMultipleSubreddits();
+      
+      if (posts.length === 0) {
+        throw new Error('No posts retrieved from Reddit API');
+      }
       
       // Extract trending topics from the posts
       const topics = redditApi.extractTrendingTopics(posts);
       
       // Format posts for display
       const formattedPosts = posts.slice(0, 20).map(post => ({
-        id: post.id,
-        title: post.title,
-        subreddit: post.subreddit,
-        author: post.author,
-        upvotes: post.upvotes,
-        comments: post.comments,
-        timeAgo: redditApi.getTimeAgo(post.created_utc),
-        url: `https://reddit.com${post.url}`
+        id: post.id || Math.random().toString(),
+        title: post.title || 'Untitled post',
+        subreddit: post.subreddit || 'unknown',
+        author: post.author || 'unknown',
+        upvotes: post.upvotes || 0,
+        comments: post.comments || 0,
+        timeAgo: redditApi.getTimeAgo(post.created_utc || Date.now() / 1000),
+        url: post.url || '#'
       }));
       
       setTrendingTopics(topics);
       setRecentPosts(formattedPosts);
+      setError(null);
+      setRetryCount(0);
       
       console.log('Successfully fetched Reddit data:', {
         topics: topics.length,
@@ -61,7 +70,16 @@ export const useRedditData = () => {
       
     } catch (err) {
       console.error('Failed to fetch Reddit data:', err);
-      setError('Failed to fetch Reddit data. This might be due to CORS restrictions or rate limiting.');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      
+      if (retryCount < 2) {
+        console.log(`Retrying... (attempt ${retryCount + 1}/2)`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => fetchRedditData(true), 2000);
+        return;
+      }
+      
+      setError(`Failed to fetch Reddit data: ${errorMessage}. Using CORS proxy but Reddit may be blocking requests.`);
     } finally {
       setLoading(false);
     }
@@ -77,17 +95,17 @@ export const useRedditData = () => {
       // Format search results
       const formattedResults = searchResults.map(post => ({
         type: 'post' as const,
-        title: post.title,
+        title: post.title || 'Untitled',
         subreddit: `r/${post.subreddit}`,
-        upvotes: post.upvotes,
-        comments: post.comments,
-        timeAgo: redditApi.getTimeAgo(post.created_utc)
+        upvotes: post.upvotes || 0,
+        comments: post.comments || 0,
+        timeAgo: redditApi.getTimeAgo(post.created_utc || Date.now() / 1000)
       }));
       
       return formattedResults;
     } catch (err) {
       console.error('Reddit search failed:', err);
-      setError('Search failed. This might be due to CORS restrictions.');
+      setError('Search failed. Reddit API may be temporarily unavailable.');
       return [];
     } finally {
       setLoading(false);
@@ -97,8 +115,8 @@ export const useRedditData = () => {
   useEffect(() => {
     fetchRedditData();
     
-    // Refresh data every 10 minutes
-    const interval = setInterval(fetchRedditData, 10 * 60 * 1000);
+    // Refresh data every 15 minutes (less frequent to avoid rate limits)
+    const interval = setInterval(() => fetchRedditData(), 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -109,6 +127,6 @@ export const useRedditData = () => {
     loading,
     error,
     searchReddit,
-    refreshData: fetchRedditData
+    refreshData: () => fetchRedditData()
   };
 };

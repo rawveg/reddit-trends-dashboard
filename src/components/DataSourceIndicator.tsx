@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertCircle, CheckCircle, Clock, Wifi, WifiOff } from "lucide-react";
+import { RefreshCw, AlertCircle, CheckCircle, Clock, Wifi, WifiOff, ExternalLink } from "lucide-react";
 
 interface DataSourceIndicatorProps {
   lastUpdated: Date;
@@ -68,12 +68,25 @@ const DataSourceIndicator = ({ lastUpdated, isLoading, error, onRefresh, dataCou
               </div>
               
               {error && (
-                <p className="text-xs text-red-600 mt-1">{error}</p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-red-600">{error}</p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('https://api.allorigins.win/', '_blank')}
+                      className="text-xs h-6"
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Check CORS Proxy
+                    </Button>
+                  </div>
+                </div>
               )}
               
               {!error && dataCount === 0 && !isLoading && (
                 <p className="text-xs text-yellow-600 mt-1">
-                  No data available. Try refreshing or check your connection.
+                  Attempting to fetch data via CORS proxy...
                 </p>
               )}
             </div>
