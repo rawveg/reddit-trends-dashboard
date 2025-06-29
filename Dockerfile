@@ -1,4 +1,4 @@
-# Force x86_64 platform to avoid ARM64 issues on M1/M2 Macs
+# Use x86_64 Node image
 FROM --platform=linux/x86_64 node:18 AS builder
 
 # Set working directory
@@ -7,11 +7,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Clear npm cache and install with clean slate
+RUN npm cache clean --force
 
-# Explicitly install the correct Rollup binary for x86_64
-RUN npm install @rollup/rollup-linux-x64-gnu --save-optional
+# Install dependencies with explicit architecture
+RUN npm install --platform=linux --arch=x64
+
+# Force rebuild all native dependencies for the correct platform
+RUN npm rebuild
 
 # Copy source code
 COPY . .
@@ -19,27 +22,39 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage - also force x86_64
+# Production stage
 FROM --platform=linux/x86_64 nginx:stable
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create a basic nginx configuration
-RUN echo 'events { worker_connections 1024; } \
-http { \
-    include /etc/nginx/mime.types; \
-    default_type application/octet-stream; \
-    server { \
-        listen 80; \
-        server_name localhost; \
-        root /usr/share/nginx/html; \
-        index index.html; \
-        location / { \
-            try_files $uri $uri/ /index.html; \
-        } \
-    } \
-}' > /etc/nginx/nginx.conf
+# Create nginx config
+COPY <<EOF /etc/nginx/nginx.conf
+events { 
+    worker_connections 1024; 
+}
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    
+    server {
+        listen 80;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+        
+        location / {
+            try_files \$uri \$uri/ /index.html;
+        }
+        
+        # Cache static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+}
+EOF
 
 # Expose port 80
 EXPOSE 80
