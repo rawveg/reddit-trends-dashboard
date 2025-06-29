@@ -22,8 +22,8 @@ FROM nginx:alpine
 # Copy built app from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration (optional - nginx default works for most React apps)
-COPY nginx.conf /etc/nginx/nginx.conf 2>/dev/null || echo "No custom nginx.conf found, using default"
+# Copy nginx configuration if it exists
+COPY nginx.conf /etc/nginx/nginx.conf 2>/dev/null || true
 
 # Expose port 80
 EXPOSE 80
