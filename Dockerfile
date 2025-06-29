@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (removed --only=production as it's invalid with npm ci)
-RUN npm ci
+# Install dependencies (using npm install since no package-lock.json exists)
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -38,10 +38,10 @@ http { \
     } \
 }' > /etc/nginx/nginx.conf
 
-# Expose port 80 (not 3000 since nginx runs on 80)
+# Expose port 80
 EXPOSE 80
 
-# Add healthcheck (fixed to use port 80)
+# Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
