@@ -1,36 +1,32 @@
-# Multi-stage build for React app
-FROM node:18-alpine AS builder
+# Use Node.js 18 Alpine as base image
+FROM node:18-alpine AS build
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for building)
+# Install dependencies using npm install (not npm ci to avoid lock file sync issues)
 RUN npm install
 
-# Copy source code
+# Copy all source files
 COPY . .
 
-# Build the application
+# Build the React application
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Production stage - use nginx to serve the built app
+FROM nginx:alpine AS production
 
-# Copy built app from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy the built app from the build stage
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration if it exists
+# Copy custom nginx config if it exists
 COPY nginx.conf /etc/nginx/nginx.conf 2>/dev/null || true
 
 # Expose port 80
 EXPOSE 80
-
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
