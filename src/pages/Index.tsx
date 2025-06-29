@@ -199,30 +199,12 @@ const Index = () => {
 
         {/* Topic Filter Analytics - Show when a trending topic is selected */}
         {isTopicFiltered && selectedTopic && (
-          <Card className="border-orange-200 bg-orange-50">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-orange-500" />
-                  Analyzing Topic: "{selectedTopic.term}"
-                </CardTitle>
-                <Button variant="outline" size="sm" onClick={handleClearSearch}>
-                  Back to Dashboard
-                </Button>
-              </div>
-              <CardDescription>
-                Deep dive analysis for this trending topic with {selectedTopic.mentions.toLocaleString()} mentions and {selectedTopic.growth} growth
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SearchAnalytics 
-                query={selectedTopic.term}
-                results={topicFilterResults}
-                onClearSearch={handleClearSearch}
-                onKeywordClick={handleKeywordClick}
-              />
-            </CardContent>
-          </Card>
+          <SearchAnalytics 
+            query={selectedTopic.term}
+            results={topicFilterResults}
+            onClearSearch={handleClearSearch}
+            onKeywordClick={handleKeywordClick}
+          />
         )}
 
         {/* Show explanation when no data */}
