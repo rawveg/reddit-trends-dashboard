@@ -2,7 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Network, Users } from "lucide-react";
 
-const NetworkGraph = () => {
+interface NetworkGraphProps {
+  onTopicClick?: (topic: string) => void;
+}
+
+const NetworkGraph = ({ onTopicClick }: NetworkGraphProps) => {
   const connections = [
     { from: 'AI', to: 'Technology', strength: 85, posts: 234 },
     { from: 'AI', to: 'Science', strength: 72, posts: 156 },
@@ -23,6 +27,12 @@ const NetworkGraph = () => {
     { name: 'WorldNews', x: 60, y: 90, size: 26, color: '#84cc16' },
   ];
 
+  const handleTopicClick = (topicName: string) => {
+    if (onTopicClick) {
+      onTopicClick(topicName.toLowerCase());
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -30,6 +40,7 @@ const NetworkGraph = () => {
           <Network className="w-5 h-5 text-purple-500" />
           Topic Network & Relationships
         </CardTitle>
+        <p className="text-sm text-gray-600">Click on any topic node to search for it</p>
       </CardHeader>
       <CardContent>
         <div className="relative h-80 bg-gray-50 rounded-lg overflow-hidden">
@@ -59,20 +70,26 @@ const NetworkGraph = () => {
           {topics.map((topic, index) => (
             <div
               key={index}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-transform"
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-all duration-200 group"
               style={{ 
                 left: `${topic.x}%`, 
                 top: `${topic.y}%`,
                 width: `${topic.size}px`,
                 height: `${topic.size}px`
               }}
+              onClick={() => handleTopicClick(topic.name)}
+              title={`Click to search for ${topic.name}`}
             >
               <div
-                className="w-full h-full rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg"
+                className="w-full h-full rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg group-hover:shadow-xl transition-shadow"
                 style={{ backgroundColor: topic.color }}
-                title={`${topic.name} - Click for details`}
               >
                 {topic.name.slice(0, 2)}
+              </div>
+              
+              {/* Tooltip on hover */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                Search for {topic.name}
               </div>
             </div>
           ))}

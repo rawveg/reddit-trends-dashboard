@@ -264,8 +264,8 @@ const Index = () => {
                 {/* Engagement metrics */}
                 <EngagementMetrics />
 
-                {/* Network graph */}
-                <NetworkGraph />
+                {/* Network graph with click handler */}
+                <NetworkGraph onTopicClick={handleKeywordClick} />
 
                 {/* Analytics Tabs */}
                 <Tabs defaultValue="sentiment" className="w-full">
