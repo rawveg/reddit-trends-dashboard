@@ -2,7 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Hash, TrendingUp } from "lucide-react";
 
-const TrendingKeywords = () => {
+interface TrendingKeywordsProps {
+  onKeywordClick?: (keyword: string) => void;
+}
+
+const TrendingKeywords = ({ onKeywordClick }: TrendingKeywordsProps) => {
   const keywords = [
     { word: 'artificial', mentions: 1240, growth: 45, size: 'text-4xl' },
     { word: 'intelligence', mentions: 1180, growth: 42, size: 'text-3xl' },
@@ -22,10 +26,16 @@ const TrendingKeywords = () => {
   ];
 
   const getColor = (growth: number) => {
-    if (growth > 40) return 'text-red-500';
-    if (growth > 25) return 'text-orange-500';
-    if (growth > 15) return 'text-blue-500';
-    return 'text-gray-600';
+    if (growth > 40) return 'text-red-500 hover:text-red-600';
+    if (growth > 25) return 'text-orange-500 hover:text-orange-600';
+    if (growth > 15) return 'text-blue-500 hover:text-blue-600';
+    return 'text-gray-600 hover:text-gray-700';
+  };
+
+  const handleKeywordClick = (keyword: string) => {
+    if (onKeywordClick) {
+      onKeywordClick(keyword);
+    }
   };
 
   return (
@@ -35,18 +45,20 @@ const TrendingKeywords = () => {
           <Hash className="w-5 h-5 text-orange-500" />
           Trending Keywords
         </CardTitle>
+        <p className="text-sm text-gray-600">Click any keyword to search for it</p>
       </CardHeader>
       <CardContent>
         <div className="relative h-80 flex flex-wrap items-center justify-center gap-2 p-4">
           {keywords.map((keyword, index) => (
             <span
               key={index}
-              className={`font-bold cursor-pointer hover:scale-110 transition-transform ${keyword.size} ${getColor(keyword.growth)}`}
+              className={`font-bold cursor-pointer transition-all duration-200 hover:scale-110 ${keyword.size} ${getColor(keyword.growth)}`}
               style={{
                 transform: `rotate(${Math.random() * 20 - 10}deg)`,
                 margin: `${Math.random() * 10}px`
               }}
-              title={`${keyword.mentions} mentions, +${keyword.growth}% growth`}
+              title={`${keyword.mentions} mentions, +${keyword.growth}% growth - Click to search`}
+              onClick={() => handleKeywordClick(keyword.word)}
             >
               {keyword.word}
             </span>

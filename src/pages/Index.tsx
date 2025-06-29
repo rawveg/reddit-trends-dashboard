@@ -258,7 +258,7 @@ const Index = () => {
                 {/* Grid of additional charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <VelocityChart />
-                  <TrendingKeywords />
+                  <TrendingKeywords onKeywordClick={handleKeywordClick} />
                 </div>
 
                 {/* Engagement metrics */}
