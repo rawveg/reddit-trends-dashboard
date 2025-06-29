@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, TrendingUp, MessageCircle, BarChart3, Activity, Map, Bell, AlertTriangle } from "lucide-react";
+import { Search, TrendingUp, MessageCircle, BarChart3, Activity, Map, Bell, AlertTriangle, ExternalLink } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useRedditData } from "@/hooks/useRedditData";
 import DataSourceIndicator from "@/components/DataSourceIndicator";
@@ -83,6 +83,29 @@ const Index = () => {
 
   const handleKeywordClick = (keyword: string) => {
     handleSearch(keyword, true); // Pass true to indicate this is from a keyword click
+  };
+
+  // Function to properly format Reddit URLs
+  const getRedditUrl = (url: string) => {
+    if (!url || url === '#') return '#';
+    
+    // If it's already a full URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // If it starts with /r/, prepend reddit.com
+    if (url.startsWith('/r/')) {
+      return `https://www.reddit.com${url}`;
+    }
+    
+    // If it's a relative path, prepend reddit.com
+    if (url.startsWith('/')) {
+      return `https://www.reddit.com${url}`;
+    }
+    
+    // Otherwise, assume it needs the full reddit.com prefix
+    return `https://www.reddit.com/${url}`;
   };
 
   // Scroll to top when search results change (as a backup)
@@ -292,9 +315,25 @@ const Index = () => {
                 <CardContent className="space-y-3 max-h-96 overflow-y-auto">
                   {recentPosts.slice(0, 8).map((post) => (
                     <div key={post.id} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                      <h4 className="font-medium text-sm leading-tight mb-2">
-                        {post.title}
-                      </h4>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-sm leading-tight flex-1 mr-2">
+                          {post.title}
+                        </h4>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-auto p-1 flex-shrink-0"
+                          onClick={() => {
+                            const url = getRedditUrl(post.url || '');
+                            if (url !== '#') {
+                              window.open(url, '_blank');
+                            }
+                          }}
+                          disabled={!post.url || post.url === '#'}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-gray-600">
                         <span className="font-medium text-blue-600">r/{post.subreddit}</span>
                         <span>•</span>
