@@ -7,11 +7,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (using npm install since no package-lock.json exists)
-RUN npm install
+# Install dependencies with platform-specific handling
+RUN npm install --platform=linux --arch=x64
 
 # Copy source code
 COPY . .
+
+# Clean install to fix any platform issues
+RUN rm -rf node_modules && npm install
 
 # Build the application
 RUN npm run build
