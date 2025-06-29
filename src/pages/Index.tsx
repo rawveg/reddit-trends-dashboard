@@ -26,9 +26,11 @@ import RealTimeMetrics from "@/components/RealTimeMetrics";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
+  const [selectedTopicIndex, setSelectedTopicIndex] = useState<number | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [topicFilterResults, setTopicFilterResults] = useState<any[]>([]);
+  const [isTopicFiltered, setIsTopicFiltered] = useState(false);
 
   const { 
     trendingTopics, 
@@ -39,12 +41,7 @@ const Index = () => {
     refreshData 
   } = useRedditData();
 
-  const selectedTopic = trendingTopics[selectedTopicIndex] || { 
-    term: "No data available", 
-    mentions: 0, 
-    growth: "0%", 
-    subreddits: [] 
-  };
+  const selectedTopic = selectedTopicIndex !== null ? trendingTopics[selectedTopicIndex] : null;
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -57,9 +54,10 @@ const Index = () => {
     const searchQuery = query || searchTerm;
     if (searchQuery.trim()) {
       setIsSearching(true);
-      setSearchTerm(searchQuery); // Update search term if searching via keyword
+      setIsTopicFiltered(false);
+      setSelectedTopicIndex(null);
+      setSearchTerm(searchQuery);
       
-      // Scroll to top when searching via keyword click
       if (fromKeywordClick) {
         scrollToTop();
       }
@@ -78,51 +76,67 @@ const Index = () => {
     setSearchTerm("");
     setSearchResults([]);
     setIsSearching(false);
-    scrollToTop(); // Also scroll to top when clearing search
+    setIsTopicFiltered(false);
+    setSelectedTopicIndex(null);
+    scrollToTop();
+  };
+
+  const handleTopicSelect = async (index: number) => {
+    const topic = trendingTopics[index];
+    if (!topic) return;
+
+    setSelectedTopicIndex(index);
+    setIsSearching(false);
+    setIsTopicFiltered(true);
+    scrollToTop();
+
+    // Search for the selected topic to get related posts
+    try {
+      const results = await searchReddit(topic.term);
+      setTopicFilterResults(results);
+    } catch (err) {
+      console.error('Topic filter failed:', err);
+      setTopicFilterResults([]);
+    }
   };
 
   const handleKeywordClick = (keyword: string) => {
-    handleSearch(keyword, true); // Pass true to indicate this is from a keyword click
+    handleSearch(keyword, true);
   };
 
   // Function to properly format Reddit URLs
   const getRedditUrl = (url: string) => {
     if (!url || url === '#') return '#';
     
-    // If it's already a full URL, return as is
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
     
-    // If it starts with /r/, prepend reddit.com
     if (url.startsWith('/r/')) {
       return `https://www.reddit.com${url}`;
     }
     
-    // If it's a relative path, prepend reddit.com
     if (url.startsWith('/')) {
       return `https://www.reddit.com${url}`;
     }
     
-    // Otherwise, assume it needs the full reddit.com prefix
     return `https://www.reddit.com/${url}`;
   };
 
-  // Scroll to top when search results change (as a backup)
+  // Scroll to top when search results change
   useEffect(() => {
-    if (isSearching && searchResults.length > 0) {
-      // Small delay to ensure the UI has updated
+    if ((isSearching && searchResults.length > 0) || (isTopicFiltered && topicFilterResults.length > 0)) {
       setTimeout(() => {
         scrollToTop();
       }, 100);
     }
-  }, [isSearching, searchResults]);
+  }, [isSearching, searchResults, isTopicFiltered, topicFilterResults]);
 
   // Calculate metrics from trending topics
   const totalMentions = trendingTopics.reduce((sum, topic) => sum + topic.mentions, 0);
   const totalPosts = recentPosts.length;
   const activeSubreddits = new Set(trendingTopics.flatMap(t => t.subreddits)).size;
-  const avgSentiment = 7.2; // Would be calculated from real sentiment analysis
+  const avgSentiment = 7.2;
   const topGrowthRate = trendingTopics.length > 0 ? trendingTopics[0].growth : "0%";
   const peakHour = "2:00 PM";
 
@@ -173,7 +187,7 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        {/* Search Analytics - Show comprehensive analysis when searching */}
+        {/* Search Analytics - Show when actively searching */}
         {isSearching && (
           <SearchAnalytics 
             query={searchTerm}
@@ -183,8 +197,36 @@ const Index = () => {
           />
         )}
 
+        {/* Topic Filter Analytics - Show when a trending topic is selected */}
+        {isTopicFiltered && selectedTopic && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-orange-500" />
+                  Analyzing Topic: "{selectedTopic.term}"
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={handleClearSearch}>
+                  Back to Dashboard
+                </Button>
+              </div>
+              <CardDescription>
+                Deep dive analysis for this trending topic with {selectedTopic.mentions.toLocaleString()} mentions and {selectedTopic.growth} growth
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SearchAnalytics 
+                query={selectedTopic.term}
+                results={topicFilterResults}
+                onClearSearch={handleClearSearch}
+                onKeywordClick={handleKeywordClick}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Show explanation when no data */}
-        {trendingTopics.length === 0 && !loading && !isSearching && (
+        {trendingTopics.length === 0 && !loading && !isSearching && !isTopicFiltered && (
           <Card className="border-yellow-200 bg-yellow-50">
             <CardContent className="p-6">
               <div className="text-center">
@@ -209,8 +251,8 @@ const Index = () => {
           </Card>
         )}
 
-        {/* Main Dashboard - Only show when not searching and have data */}
-        {!isSearching && trendingTopics.length > 0 && (
+        {/* Main Dashboard - Only show when not searching/filtering and have data */}
+        {!isSearching && !isTopicFiltered && trendingTopics.length > 0 && (
           <>
             {/* Key Metrics Overview */}
             <TrendingMetrics 
@@ -232,6 +274,9 @@ const Index = () => {
                       <TrendingUp className="w-5 h-5 text-orange-500" />
                       Trending
                     </CardTitle>
+                    <CardDescription className="text-xs">
+                      Click any topic for detailed analysis
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {trendingTopics.slice(0, 6).map((topic, index) => (
@@ -240,7 +285,7 @@ const Index = () => {
                         topic={topic}
                         index={index}
                         isSelected={selectedTopicIndex === index}
-                        onClick={() => setSelectedTopicIndex(index)}
+                        onClick={() => handleTopicSelect(index)}
                       />
                     ))}
                   </CardContent>
