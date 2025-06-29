@@ -23,14 +23,12 @@ import VelocityChart from "@/components/VelocityChart";
 import NetworkGraph from "@/components/NetworkGraph";
 import TrendingKeywords from "@/components/TrendingKeywords";
 import RealTimeMetrics from "@/components/RealTimeMetrics";
-import TopicDetailsPanel from "@/components/TopicDetailsPanel";
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedNetworkTopic, setSelectedNetworkTopic] = useState<string | null>(null);
 
   const { 
     trendingTopics, 
@@ -85,14 +83,6 @@ const Index = () => {
 
   const handleKeywordClick = (keyword: string) => {
     handleSearch(keyword, true); // Pass true to indicate this is from a keyword click
-  };
-
-  const handleNetworkTopicClick = (topic: string) => {
-    setSelectedNetworkTopic(topic);
-  };
-
-  const handleCloseTopicDetails = () => {
-    setSelectedNetworkTopic(null);
   };
 
   // Function to properly format Reddit URLs
@@ -232,9 +222,9 @@ const Index = () => {
               peakHour={peakHour}
             />
 
-            {/* Main Content Grid - Adjusted for topic details panel */}
-            <div className={`grid gap-6 ${selectedNetworkTopic ? 'grid-cols-1 xl:grid-cols-4' : 'grid-cols-1 xl:grid-cols-5'}`}>
-              {/* Left Sidebar - Trending topics */}
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+              {/* Left Sidebar */}
               <div className="xl:col-span-1 space-y-6">
                 <Card>
                   <CardHeader>
@@ -257,18 +247,8 @@ const Index = () => {
                 </Card>
               </div>
 
-              {/* Topic Details Panel - Show when network topic is selected */}
-              {selectedNetworkTopic && (
-                <div className="xl:col-span-1">
-                  <TopicDetailsPanel 
-                    topic={selectedNetworkTopic}
-                    onClose={handleCloseTopicDetails}
-                  />
-                </div>
-              )}
-
-              {/* Main Analytics Area - Adjusted width based on panel state */}
-              <div className={`space-y-6 ${selectedNetworkTopic ? 'xl:col-span-2' : 'xl:col-span-4'}`}>
+              {/* Main Analytics Area */}
+              <div className="xl:col-span-4 space-y-6">
                 {/* Real-time metrics at the top */}
                 <RealTimeMetrics />
 
@@ -284,8 +264,8 @@ const Index = () => {
                 {/* Engagement metrics */}
                 <EngagementMetrics />
 
-                {/* Network graph with click handler */}
-                <NetworkGraph onTopicClick={handleNetworkTopicClick} />
+                {/* Network graph with integrated side panel */}
+                <NetworkGraph />
 
                 {/* Analytics Tabs */}
                 <Tabs defaultValue="sentiment" className="w-full">
