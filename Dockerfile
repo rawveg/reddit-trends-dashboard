@@ -1,4 +1,4 @@
-FROM --platform=linux/x86_64 node:18 AS builder
+FROM node:18 AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 # Production
-FROM --platform=linux/x86_64 nginx:stable
+FROM nginx:stable
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
