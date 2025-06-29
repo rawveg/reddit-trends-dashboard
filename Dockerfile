@@ -1,5 +1,5 @@
-# Use Node.js 18 Alpine as base image for smaller size
-FROM node:18-alpine AS builder
+# Force x86_64 platform to avoid ARM64 musl issues
+FROM --platform=linux/amd64 node:18-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -7,25 +7,29 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with platform-specific handling
-RUN npm install --platform=linux --arch=x64
+# Install dependencies
+RUN npm install
 
 # Copy source code
 COPY . .
 
-# Clean install to fix any platform issues
-RUN rm -rf node_modules && npm install
+# Set environment variables to force x86_64 architecture
+ENV npm_config_target_platform=linux
+ENV npm_config_target_arch=x64
+
+# Rebuild native dependencies for the correct platform
+RUN npm rebuild
 
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Production stage - also force x86_64
+FROM --platform=linux/amd64 nginx:alpine
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create a basic nginx configuration since nginx.conf doesn't exist
+# Create a basic nginx configuration
 RUN echo 'events { worker_connections 1024; } \
 http { \
     include /etc/nginx/mime.types; \
