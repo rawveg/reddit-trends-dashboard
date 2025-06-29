@@ -29,7 +29,7 @@ const NetworkGraph = ({ onTopicClick }: NetworkGraphProps) => {
 
   const handleTopicClick = (topicName: string) => {
     if (onTopicClick) {
-      onTopicClick(topicName.toLowerCase());
+      onTopicClick(topicName);
     }
   };
 
@@ -40,7 +40,7 @@ const NetworkGraph = ({ onTopicClick }: NetworkGraphProps) => {
           <Network className="w-5 h-5 text-purple-500" />
           Topic Network & Relationships
         </CardTitle>
-        <p className="text-sm text-gray-600">Click on any topic node to search for it</p>
+        <p className="text-sm text-gray-600">Click on any topic node to view detailed analysis and connections</p>
       </CardHeader>
       <CardContent>
         <div className="relative h-80 bg-gray-50 rounded-lg overflow-hidden">
@@ -78,7 +78,7 @@ const NetworkGraph = ({ onTopicClick }: NetworkGraphProps) => {
                 height: `${topic.size}px`
               }}
               onClick={() => handleTopicClick(topic.name)}
-              title={`Click to search for ${topic.name}`}
+              title={`Click to analyze ${topic.name} connections`}
             >
               <div
                 className="w-full h-full rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg group-hover:shadow-xl transition-shadow"
@@ -89,7 +89,7 @@ const NetworkGraph = ({ onTopicClick }: NetworkGraphProps) => {
               
               {/* Tooltip on hover */}
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                Search for {topic.name}
+                Analyze {topic.name}
               </div>
             </div>
           ))}
