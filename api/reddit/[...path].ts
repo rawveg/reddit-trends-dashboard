@@ -63,6 +63,14 @@ function getClientIP(req: VercelRequest): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
+
   // Only allow GET requests
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -84,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Extract path from the dynamic route
-    const { path } = req.query;
+    const { path, ...queryParams } = req.query;
     
     if (!path || !Array.isArray(path)) {
       return res.status(400).json({ error: 'Invalid path' });
@@ -94,18 +102,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const redditPath = '/' + path.join('/');
     
     // Build query string from remaining query parameters
-    const queryParams = new URLSearchParams();
-    Object.entries(req.query).forEach(([key, value]) => {
-      if (key !== 'path' && value) {
+    const urlParams = new URLSearchParams();
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (value) {
         if (Array.isArray(value)) {
-          queryParams.append(key, value[0]);
+          urlParams.append(key, value[0]);
         } else {
-          queryParams.append(key, value);
+          urlParams.append(key, value);
         }
       }
     });
     
-    const queryString = queryParams.toString();
+    const queryString = urlParams.toString();
     const fullUrl = `${REDDIT_BASE_URL}${redditPath}${queryString ? `?${queryString}` : ''}`;
     
     // Check cache first
@@ -117,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Set CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
       res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes
       
@@ -143,7 +151,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
       
-      throw new Error(`Reddit API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`Reddit API error: ${response.status} ${response.statusText} - ${errorText}`);
+      
+      return res.status(response.status).json({
+        error: `Reddit API error: ${response.status} ${response.statusText}`,
+        message: errorText
+      });
     }
 
     const data = await response.json();
@@ -167,13 +181,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes
     
     // Add rate limit headers
+    const currentRateLimit = rateLimitStore.get(`rate_limit_${clientIP}`);
     res.setHeader('X-RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS.toString());
-    res.setHeader('X-RateLimit-Remaining', (RATE_LIMIT_MAX_REQUESTS - (rateLimitStore.get(`rate_limit_${clientIP}`)?.count || 0)).toString());
+    res.setHeader('X-RateLimit-Remaining', (RATE_LIMIT_MAX_REQUESTS - (currentRateLimit?.count || 0)).toString());
 
     return res.status(200).json(data);
 

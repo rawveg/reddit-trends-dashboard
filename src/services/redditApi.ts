@@ -28,11 +28,13 @@ class RedditApiService {
   private rateLimitedUntil = 0;
   private consecutiveErrors = 0;
   
-  // Environment detection with better debugging
+  // Better environment detection
   private isProduction = typeof window !== 'undefined' && 
-    !window.location.hostname.includes('localhost') &&
-    !window.location.hostname.includes('127.0.0.1') &&
-    !window.location.hostname.includes('0.0.0.0');
+    (window.location.hostname.includes('vercel.app') || 
+     window.location.hostname.includes('.com') ||
+     window.location.hostname.includes('.net') ||
+     window.location.hostname.includes('.org')) &&
+    !window.location.hostname.includes('localhost');
   
   constructor() {
     // Debug environment detection
@@ -40,18 +42,17 @@ class RedditApiService {
       console.log('Environment Detection:', {
         hostname: window.location.hostname,
         isProduction: this.isProduction,
-        proxyType: this.isProduction ? 'Vercel API Routes' : 'CORS Anywhere Proxy'
+        proxyType: this.isProduction ? 'Vercel API Routes' : 'CORS Proxy'
       });
     }
   }
   
-  // Different proxy strategies - using a more reliable CORS proxy
+  // Different proxy strategies
   private getApiBase(): string {
     if (this.isProduction) {
       return '/api/reddit'; // Use Vercel API routes in production
     } else {
-      // Try multiple CORS proxies as fallbacks
-      return 'https://corsproxy.io/?'; // More reliable CORS proxy
+      return 'https://corsproxy.io/?'; // Use CORS proxy locally
     }
   }
   
@@ -114,9 +115,9 @@ class RedditApiService {
           });
         }
         url = apiUrl.toString();
-        console.log(`[PRODUCTION] Fetching via Vercel API: ${url}`);
+        console.log(`[PRODUCTION] Fetching via Vercel API: ${apiUrl.pathname}${apiUrl.search}`);
       } else {
-        // Local development: Use CORS proxy with different format
+        // Local development: Use CORS proxy
         const redditUrl = `https://www.reddit.com${path}`;
         const urlWithParams = new URL(redditUrl);
         if (params) {
@@ -124,7 +125,6 @@ class RedditApiService {
             urlWithParams.searchParams.append(key, value);
           });
         }
-        // corsproxy.io uses a different format: https://corsproxy.io/?https://example.com
         url = `${this.getApiBase()}${urlWithParams.toString()}`;
         console.log(`[LOCAL] Reddit URL: ${urlWithParams.toString()}`);
         console.log(`[LOCAL] Final proxy URL: ${url}`);
@@ -385,7 +385,7 @@ class RedditApiService {
   getEnvironmentInfo(): { isProduction: boolean; proxyType: string } {
     return {
       isProduction: this.isProduction,
-      proxyType: this.isProduction ? 'Vercel API Routes' : 'CORS Anywhere Proxy'
+      proxyType: this.isProduction ? 'Vercel API Routes' : 'CORS Proxy'
     };
   }
 }
