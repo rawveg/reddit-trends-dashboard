@@ -522,4 +522,3 @@ We chose AGPL-3.0 to ensure that improvements to this software remain open sourc
 
 **Built with ❤️ using modern web technologies and containerized for easy deployment**
 
-For more information, visit our [GitHub repository](https://github.com/rawveg/reddit-trends-dashboard).
