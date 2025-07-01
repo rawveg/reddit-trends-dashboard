@@ -23,11 +23,25 @@ interface RedditApiResponse {
 }
 
 class RedditApiService {
-  private apiBase = '/api/reddit';
   private lastRequestTime = 0;
-  private minRequestInterval = 1000; // 1 second between requests (reduced since we have server-side rate limiting)
+  private minRequestInterval = 2000; // 2 seconds between requests
   private rateLimitedUntil = 0;
   private consecutiveErrors = 0;
+  
+  // Environment detection
+  private isProduction = typeof window !== 'undefined' && 
+    (window.location.hostname.includes('vercel.app') || 
+     window.location.hostname.includes('your-domain.com') ||
+     !window.location.hostname.includes('localhost'));
+  
+  // Different proxy strategies
+  private getApiBase(): string {
+    if (this.isProduction) {
+      return '/api/reddit'; // Use Vercel API routes in production
+    } else {
+      return 'https://api.allorigins.win/raw?url='; // Use external CORS proxy locally
+    }
+  }
   
   private async waitForRateLimit(): Promise<void> {
     const now = Date.now();
@@ -77,21 +91,36 @@ class RedditApiService {
     await this.waitForRateLimit();
     
     try {
-      // Build URL with parameters
-      const url = new URL(`${this.apiBase}${path}`, window.location.origin);
-      if (params) {
-        Object.entries(params).forEach(([key, value]) => {
-          url.searchParams.append(key, value);
-        });
+      let url: string;
+      
+      if (this.isProduction) {
+        // Production: Use Vercel API routes
+        const apiUrl = new URL(`${this.getApiBase()}${path}`, window.location.origin);
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            apiUrl.searchParams.append(key, value);
+          });
+        }
+        url = apiUrl.toString();
+        console.log(`Fetching via Vercel API: ${apiUrl.pathname}${apiUrl.search}`);
+      } else {
+        // Local development: Use external CORS proxy
+        const redditUrl = `https://www.reddit.com${path}`;
+        const urlWithParams = new URL(redditUrl);
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            urlWithParams.searchParams.append(key, value);
+          });
+        }
+        url = `${this.getApiBase()}${encodeURIComponent(urlWithParams.toString())}`;
+        console.log(`Fetching via CORS proxy: ${path}${params ? '?' + new URLSearchParams(params).toString() : ''}`);
       }
       
-      console.log(`Fetching via proxy: ${url.pathname}${url.search}`);
-      
-      const response = await fetch(url.toString());
+      const response = await fetch(url);
       
       if (response.status === 429) {
         const errorData = await response.json().catch(() => ({}));
-        this.handleRateLimit(response, errorData.retryAfter);
+        this.handleRateLimit(response, errorData.retryAfter || errorData.resetIn);
         throw new Error(`Rate limited. ${errorData.message || 'Please try again later.'}`);
       }
       
@@ -148,7 +177,7 @@ class RedditApiService {
     
     const allPosts: RedditPost[] = [];
     
-    console.log('Fetching from multiple subreddits via Vercel API...');
+    console.log(`Fetching from multiple subreddits via ${this.isProduction ? 'Vercel API' : 'CORS proxy'}...`);
     
     // Fetch from multiple subreddits with better error handling
     const subredditsToFetch = subreddits.slice(0, 6); // Fetch from 6 subreddits
@@ -316,6 +345,14 @@ class RedditApiService {
   // Method to get time until rate limit expires
   getRateLimitWaitTime(): number {
     return Math.max(0, this.rateLimitedUntil - Date.now());
+  }
+
+  // Method to get current environment info
+  getEnvironmentInfo(): { isProduction: boolean; proxyType: string } {
+    return {
+      isProduction: this.isProduction,
+      proxyType: this.isProduction ? 'Vercel API Routes' : 'External CORS Proxy'
+    };
   }
 }
 
