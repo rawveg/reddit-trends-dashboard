@@ -28,11 +28,22 @@ class RedditApiService {
   private rateLimitedUntil = 0;
   private consecutiveErrors = 0;
   
-  // Environment detection
+  // Environment detection with better debugging
   private isProduction = typeof window !== 'undefined' && 
-    (window.location.hostname.includes('vercel.app') || 
-     window.location.hostname.includes('your-domain.com') ||
-     !window.location.hostname.includes('localhost'));
+    !window.location.hostname.includes('localhost') &&
+    !window.location.hostname.includes('127.0.0.1') &&
+    !window.location.hostname.includes('0.0.0.0');
+  
+  constructor() {
+    // Debug environment detection
+    if (typeof window !== 'undefined') {
+      console.log('Environment Detection:', {
+        hostname: window.location.hostname,
+        isProduction: this.isProduction,
+        proxyType: this.isProduction ? 'Vercel API Routes' : 'External CORS Proxy'
+      });
+    }
+  }
   
   // Different proxy strategies
   private getApiBase(): string {
@@ -102,7 +113,7 @@ class RedditApiService {
           });
         }
         url = apiUrl.toString();
-        console.log(`Fetching via Vercel API: ${apiUrl.pathname}${apiUrl.search}`);
+        console.log(`[PRODUCTION] Fetching via Vercel API: ${url}`);
       } else {
         // Local development: Use external CORS proxy
         const redditUrl = `https://www.reddit.com${path}`;
@@ -113,10 +124,13 @@ class RedditApiService {
           });
         }
         url = `${this.getApiBase()}${encodeURIComponent(urlWithParams.toString())}`;
-        console.log(`Fetching via CORS proxy: ${path}${params ? '?' + new URLSearchParams(params).toString() : ''}`);
+        console.log(`[LOCAL] Reddit URL: ${urlWithParams.toString()}`);
+        console.log(`[LOCAL] Final proxy URL: ${url}`);
       }
       
       const response = await fetch(url);
+      
+      console.log(`Response status: ${response.status} ${response.statusText}`);
       
       if (response.status === 429) {
         const errorData = await response.json().catch(() => ({}));
@@ -125,8 +139,9 @@ class RedditApiService {
       }
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error(`HTTP Error ${response.status}:`, errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
       
       const data = await response.json();
@@ -134,11 +149,18 @@ class RedditApiService {
       return data;
       
     } catch (error) {
+      console.error('Detailed fetch error:', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
+        isProduction: this.isProduction,
+        path,
+        params
+      });
+      
       if (error instanceof Error && error.message.includes('Rate limited')) {
         throw error; // Re-throw rate limit errors
       }
       
-      console.error('Proxy request failed:', error);
       this.consecutiveErrors++;
       throw error;
     }
@@ -149,19 +171,27 @@ class RedditApiService {
       const path = `/r/${subreddit}/hot.json`;
       const params = { limit: limit.toString() };
       
+      console.log(`Fetching subreddit: r/${subreddit} with limit: ${limit}`);
+      
       const data: RedditApiResponse = await this.fetchFromProxy(path, params);
       
+      console.log('Raw response data:', data);
+      
       if (!data?.data?.children) {
+        console.error('Invalid response format:', data);
         throw new Error('Invalid response format from Reddit API');
       }
       
-      return data.data.children.map(child => ({
+      const posts = data.data.children.map(child => ({
         ...child.data,
         upvotes: child.data.score || child.data.upvotes || 0,
         comments: child.data.num_comments || child.data.comments || 0,
         subreddit: child.data.subreddit || subreddit,
         url: child.data.permalink ? `https://www.reddit.com${child.data.permalink}` : child.data.url || '#'
       }));
+      
+      console.log(`Successfully fetched ${posts.length} posts from r/${subreddit}`);
+      return posts;
     } catch (error) {
       console.error(`Error fetching r/${subreddit}:`, error);
       throw error;
@@ -200,6 +230,8 @@ class RedditApiService {
         // For other errors, continue with other subreddits
       }
     }
+    
+    console.log(`Total posts fetched: ${allPosts.length}`);
     
     // Sort by score and recency
     return allPosts
