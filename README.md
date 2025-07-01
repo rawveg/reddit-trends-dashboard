@@ -1,11 +1,21 @@
+<div align="center">
+
 # Reddit Trends Dashboard
 
-A comprehensive Reddit trend analysis application built with React, TypeScript, and modern web technologies. This dashboard provides real-time sentiment tracking, community insights, and predictive analytics for Reddit content.
+**A comprehensive Reddit trend analysis application built with React, TypeScript, and modern web technologies.**
 
-![Reddit Trends Dashboard](https://img.shields.io/badge/React-18.3.1-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.5.3-blue)
-![Docker](https://img.shields.io/badge/Docker-Ready-blue)
-![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.11-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+
+[🚀 Live Demo](https://reddittrends.rawveg.co.uk) • [📖 Documentation](#features) • [🐛 Report Bug](https://github.com/rawveg/reddit-trends-dashboard/issues) • [💡 Request Feature](https://github.com/rawveg/reddit-trends-dashboard/issues)
+
+---
+
+*This dashboard provides real-time sentiment tracking, community insights, and predictive analytics for Reddit content.*
+
+</div>
 
 ![](screenshot.png)
 
