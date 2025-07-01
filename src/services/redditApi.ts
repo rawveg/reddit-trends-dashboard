@@ -40,17 +40,18 @@ class RedditApiService {
       console.log('Environment Detection:', {
         hostname: window.location.hostname,
         isProduction: this.isProduction,
-        proxyType: this.isProduction ? 'Vercel API Routes' : 'External CORS Proxy'
+        proxyType: this.isProduction ? 'Vercel API Routes' : 'CORS Anywhere Proxy'
       });
     }
   }
   
-  // Different proxy strategies
+  // Different proxy strategies - using a more reliable CORS proxy
   private getApiBase(): string {
     if (this.isProduction) {
       return '/api/reddit'; // Use Vercel API routes in production
     } else {
-      return 'https://api.allorigins.win/raw?url='; // Use external CORS proxy locally
+      // Try multiple CORS proxies as fallbacks
+      return 'https://corsproxy.io/?'; // More reliable CORS proxy
     }
   }
   
@@ -115,7 +116,7 @@ class RedditApiService {
         url = apiUrl.toString();
         console.log(`[PRODUCTION] Fetching via Vercel API: ${url}`);
       } else {
-        // Local development: Use external CORS proxy
+        // Local development: Use CORS proxy with different format
         const redditUrl = `https://www.reddit.com${path}`;
         const urlWithParams = new URL(redditUrl);
         if (params) {
@@ -123,7 +124,8 @@ class RedditApiService {
             urlWithParams.searchParams.append(key, value);
           });
         }
-        url = `${this.getApiBase()}${encodeURIComponent(urlWithParams.toString())}`;
+        // corsproxy.io uses a different format: https://corsproxy.io/?https://example.com
+        url = `${this.getApiBase()}${urlWithParams.toString()}`;
         console.log(`[LOCAL] Reddit URL: ${urlWithParams.toString()}`);
         console.log(`[LOCAL] Final proxy URL: ${url}`);
       }
@@ -383,7 +385,7 @@ class RedditApiService {
   getEnvironmentInfo(): { isProduction: boolean; proxyType: string } {
     return {
       isProduction: this.isProduction,
-      proxyType: this.isProduction ? 'Vercel API Routes' : 'External CORS Proxy'
+      proxyType: this.isProduction ? 'Vercel API Routes' : 'CORS Anywhere Proxy'
     };
   }
 }
