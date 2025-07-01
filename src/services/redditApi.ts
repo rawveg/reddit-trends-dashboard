@@ -23,10 +23,9 @@ interface RedditApiResponse {
 }
 
 class RedditApiService {
-  private corsProxy = 'https://api.allorigins.win/raw?url=';
-  private baseUrl = 'https://www.reddit.com';
+  private apiBase = '/api/reddit';
   private lastRequestTime = 0;
-  private minRequestInterval = 2000; // 2 seconds between requests
+  private minRequestInterval = 1000; // 1 second between requests (reduced since we have server-side rate limiting)
   private rateLimitedUntil = 0;
   private consecutiveErrors = 0;
   
@@ -44,27 +43,26 @@ class RedditApiService {
     const timeSinceLastRequest = now - this.lastRequestTime;
     if (timeSinceLastRequest < this.minRequestInterval) {
       const waitTime = this.minRequestInterval - timeSinceLastRequest;
-      console.log(`Throttling requests. Waiting ${waitTime}ms...`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
     this.lastRequestTime = Date.now();
   }
   
-  private handleRateLimit(response?: Response): void {
+  private handleRateLimit(response?: Response, retryAfter?: string): void {
     this.consecutiveErrors++;
     
-    // Exponential backoff: 5s, 15s, 45s, 135s, etc.
-    const backoffTime = Math.min(5000 * Math.pow(3, this.consecutiveErrors - 1), 300000); // Max 5 minutes
+    // Use server-provided retry-after if available, otherwise use exponential backoff
+    let backoffTime: number;
+    if (retryAfter) {
+      backoffTime = parseInt(retryAfter) * 1000; // Convert seconds to milliseconds
+    } else {
+      backoffTime = Math.min(5000 * Math.pow(2, this.consecutiveErrors - 1), 300000); // Max 5 minutes
+    }
+    
     this.rateLimitedUntil = Date.now() + backoffTime;
     
     console.warn(`Rate limit hit. Backing off for ${backoffTime}ms. Consecutive errors: ${this.consecutiveErrors}`);
-    
-    // If we have too many consecutive errors, increase the minimum interval
-    if (this.consecutiveErrors > 3) {
-      this.minRequestInterval = Math.min(this.minRequestInterval * 2, 10000); // Max 10 seconds
-      console.warn(`Increased minimum request interval to ${this.minRequestInterval}ms`);
-    }
   }
   
   private handleSuccessfulRequest(): void {
@@ -72,57 +70,46 @@ class RedditApiService {
     if (this.consecutiveErrors > 0) {
       console.log('Request successful. Resetting error count.');
       this.consecutiveErrors = 0;
-      
-      // Gradually reduce the minimum interval back to normal
-      if (this.minRequestInterval > 2000) {
-        this.minRequestInterval = Math.max(this.minRequestInterval / 2, 2000);
-        console.log(`Reduced minimum request interval to ${this.minRequestInterval}ms`);
-      }
     }
   }
   
-  private async fetchWithCorsProxy(url: string): Promise<any> {
+  private async fetchFromProxy(path: string, params?: Record<string, string>): Promise<any> {
     await this.waitForRateLimit();
     
     try {
-      // Try direct fetch first (works in production/deployed environments)
-      const directResponse = await fetch(url);
-      if (directResponse.ok) {
-        this.handleSuccessfulRequest();
-        return await directResponse.json();
-      } else if (directResponse.status === 429) {
-        this.handleRateLimit(directResponse);
-        throw new Error(`Rate limited (429). Will retry after backoff period.`);
+      // Build URL with parameters
+      const url = new URL(`${this.apiBase}${path}`, window.location.origin);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          url.searchParams.append(key, value);
+        });
       }
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('429')) {
-        throw error; // Re-throw rate limit errors
-      }
-      console.log('Direct fetch failed, trying CORS proxy...');
-    }
-
-    try {
-      // Fallback to CORS proxy for development
-      const proxyUrl = `${this.corsProxy}${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl);
+      
+      console.log(`Fetching via proxy: ${url.pathname}${url.search}`);
+      
+      const response = await fetch(url.toString());
       
       if (response.status === 429) {
-        this.handleRateLimit(response);
-        throw new Error(`Rate limited (429) via proxy. Will retry after backoff period.`);
+        const errorData = await response.json().catch(() => ({}));
+        this.handleRateLimit(response, errorData.retryAfter);
+        throw new Error(`Rate limited. ${errorData.message || 'Please try again later.'}`);
       }
       
       if (!response.ok) {
-        throw new Error(`CORS proxy error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
       this.handleSuccessfulRequest();
       return data;
+      
     } catch (error) {
-      if (error instanceof Error && error.message.includes('429')) {
+      if (error instanceof Error && error.message.includes('Rate limited')) {
         throw error; // Re-throw rate limit errors
       }
-      console.error('CORS proxy also failed:', error);
+      
+      console.error('Proxy request failed:', error);
       this.consecutiveErrors++;
       throw error;
     }
@@ -130,10 +117,14 @@ class RedditApiService {
   
   async fetchSubredditPosts(subreddit: string, limit: number = 25): Promise<RedditPost[]> {
     try {
-      const url = `${this.baseUrl}/r/${subreddit}/hot.json?limit=${limit}`;
-      console.log(`Fetching from: ${url}`);
+      const path = `/r/${subreddit}/hot.json`;
+      const params = { limit: limit.toString() };
       
-      const data: RedditApiResponse = await this.fetchWithCorsProxy(url);
+      const data: RedditApiResponse = await this.fetchFromProxy(path, params);
+      
+      if (!data?.data?.children) {
+        throw new Error('Invalid response format from Reddit API');
+      }
       
       return data.data.children.map(child => ({
         ...child.data,
@@ -157,23 +148,22 @@ class RedditApiService {
     
     const allPosts: RedditPost[] = [];
     
-    console.log('Fetching from multiple subreddits with rate limiting...');
+    console.log('Fetching from multiple subreddits via Vercel API...');
     
-    // Reduce the number of subreddits to fetch from to avoid rate limits
-    const subredditsToFetch = subreddits.slice(0, 4); // Reduced from 6 to 4
+    // Fetch from multiple subreddits with better error handling
+    const subredditsToFetch = subreddits.slice(0, 6); // Fetch from 6 subreddits
     
     for (const subreddit of subredditsToFetch) {
       try {
         console.log(`Fetching r/${subreddit}...`);
-        const posts = await this.fetchSubredditPosts(subreddit, 8); // Reduced from 10 to 8
+        const posts = await this.fetchSubredditPosts(subreddit, 10);
         allPosts.push(...posts);
         
-        // The waitForRateLimit() in fetchWithCorsProxy handles the delay
       } catch (error) {
         console.error(`Failed to fetch r/${subreddit}:`, error);
         
         // If it's a rate limit error, stop trying other subreddits for now
-        if (error instanceof Error && error.message.includes('429')) {
+        if (error instanceof Error && error.message.includes('Rate limited')) {
           console.log('Rate limited. Stopping further requests for now.');
           break;
         }
@@ -186,17 +176,26 @@ class RedditApiService {
     return allPosts
       .filter(post => post.title && post.subreddit)
       .sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0))
-      .slice(0, 40); // Reduced from 50 to 40
+      .slice(0, 50);
   }
 
-  async searchReddit(query: string, limit: number = 20): Promise<RedditPost[]> { // Reduced default limit
+  async searchReddit(query: string, limit: number = 25): Promise<RedditPost[]> {
     try {
-      const encodedQuery = encodeURIComponent(query);
-      const url = `${this.baseUrl}/search.json?q=${encodedQuery}&limit=${limit}&sort=hot&t=day`;
+      const path = '/search.json';
+      const params = {
+        q: query,
+        limit: limit.toString(),
+        sort: 'hot',
+        t: 'day'
+      };
       
       console.log(`Searching Reddit for: ${query}`);
       
-      const data: RedditApiResponse = await this.fetchWithCorsProxy(url);
+      const data: RedditApiResponse = await this.fetchFromProxy(path, params);
+      
+      if (!data?.data?.children) {
+        throw new Error('Invalid search response format');
+      }
       
       return data.data.children.map(child => ({
         ...child.data,
@@ -274,7 +273,7 @@ class RedditApiService {
         const scoreB = b.count * 100 + b.totalScore;
         return scoreB - scoreA;
       })
-      .slice(0, 12) // Reduced from 15 to 12
+      .slice(0, 15)
       .map(([term, data]) => ({
         term,
         mentions: data.totalScore,
